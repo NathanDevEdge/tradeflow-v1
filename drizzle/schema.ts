@@ -1,17 +1,10 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +18,150 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Pricelists - groups of items from CSV uploads
+ */
+export const pricelists = mysqlTable("pricelists", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Pricelist = typeof pricelists.$inferSelect;
+export type InsertPricelist = typeof pricelists.$inferInsert;
+
+/**
+ * Pricelist items - individual products with pricing
+ * CSV columns: Item Name, SKU Code, Pack Size, Pack buy price ex gst, Loose buy price ex gst, RRP ex gst, RRP inc gst
+ * Required fields: Item Name, Loose buy price ex gst, RRP ex gst
+ */
+export const pricelistItems = mysqlTable("pricelist_items", {
+  id: int("id").autoincrement().primaryKey(),
+  pricelistId: int("pricelistId").notNull(),
+  itemName: varchar("itemName", { length: 500 }).notNull(),
+  skuCode: varchar("skuCode", { length: 100 }),
+  packSize: varchar("packSize", { length: 100 }),
+  packBuyPrice: decimal("packBuyPrice", { precision: 10, scale: 2 }),
+  looseBuyPrice: decimal("looseBuyPrice", { precision: 10, scale: 2 }).notNull(), // Required - used for all purchase calculations
+  rrpExGst: decimal("rrpExGst", { precision: 10, scale: 2 }).notNull(), // Required
+  rrpIncGst: decimal("rrpIncGst", { precision: 10, scale: 2 }),
+  sellPrice: decimal("sellPrice", { precision: 10, scale: 2 }).notNull(), // Defaults to rrpExGst, editable
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PricelistItem = typeof pricelistItems.$inferSelect;
+export type InsertPricelistItem = typeof pricelistItems.$inferInsert;
+
+/**
+ * Customers - companies that receive quotes
+ */
+export const customers = mysqlTable("customers", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  contactName: varchar("contactName", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  billingAddress: text("billingAddress"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
+
+/**
+ * Suppliers - companies that receive purchase orders
+ */
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  billingAddress: text("billingAddress"),
+  keyContactName: varchar("keyContactName", { length: 255 }),
+  keyContactEmail: varchar("keyContactEmail", { length: 320 }),
+  poEmail: varchar("poEmail", { length: 320 }).notNull(), // Email address for sending POs
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;
+
+/**
+ * Quotes - customer-facing price proposals with margin tracking
+ */
+export const quotes = mysqlTable("quotes", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId").notNull(),
+  quoteNumber: varchar("quoteNumber", { length: 50 }).notNull().unique(),
+  status: mysqlEnum("status", ["draft", "sent", "accepted", "rejected"]).default("draft").notNull(),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalMargin: decimal("totalMargin", { precision: 10, scale: 2 }).notNull().default("0"),
+  marginPercentage: decimal("marginPercentage", { precision: 5, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  pdfUrl: varchar("pdfUrl", { length: 500 }), // S3 URL for generated PDF
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = typeof quotes.$inferInsert;
+
+/**
+ * Quote items - line items in a quote with margin calculations
+ */
+export const quoteItems = mysqlTable("quote_items", {
+  id: int("id").autoincrement().primaryKey(),
+  quoteId: int("quoteId").notNull(),
+  pricelistItemId: int("pricelistItemId"), // Optional reference to pricelist item
+  itemName: varchar("itemName", { length: 500 }).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  sellPrice: decimal("sellPrice", { precision: 10, scale: 2 }).notNull(),
+  buyPrice: decimal("buyPrice", { precision: 10, scale: 2 }).notNull(), // Loose buy price ex GST
+  margin: decimal("margin", { precision: 10, scale: 2 }).notNull(), // (sellPrice - buyPrice) * quantity
+  lineTotal: decimal("lineTotal", { precision: 10, scale: 2 }).notNull(), // sellPrice * quantity
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type QuoteItem = typeof quoteItems.$inferSelect;
+export type InsertQuoteItem = typeof quoteItems.$inferInsert;
+
+/**
+ * Purchase orders - supplier-facing orders showing only buy prices
+ */
+export const purchaseOrders = mysqlTable("purchase_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  supplierId: int("supplierId").notNull(),
+  poNumber: varchar("poNumber", { length: 50 }).notNull().unique(),
+  status: mysqlEnum("status", ["draft", "sent", "received", "cancelled"]).default("draft").notNull(),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  pdfUrl: varchar("pdfUrl", { length: 500 }), // S3 URL for generated PDF
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = typeof purchaseOrders.$inferInsert;
+
+/**
+ * Purchase order items - line items showing only buy prices
+ */
+export const purchaseOrderItems = mysqlTable("purchase_order_items", {
+  id: int("id").autoincrement().primaryKey(),
+  purchaseOrderId: int("purchaseOrderId").notNull(),
+  pricelistItemId: int("pricelistItemId"), // Optional reference to pricelist item
+  itemName: varchar("itemName", { length: 500 }).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  buyPrice: decimal("buyPrice", { precision: 10, scale: 2 }).notNull(), // Loose buy price ex GST
+  lineTotal: decimal("lineTotal", { precision: 10, scale: 2 }).notNull(), // buyPrice * quantity
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;

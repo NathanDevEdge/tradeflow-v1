@@ -192,3 +192,18 @@
 - [x] Fix unit price input to allow fluid typing (not locked to decimal format)
 - [x] Remove 2-3 second delay when updating items
 - [x] Show silent background saves without blocking UI
+
+## Purchase Order System
+- [x] Update PO schema to include delivery method (in-store delivery / pickup from supplier)
+- [x] Update PO schema to include shipping address
+- [ ] Add company billing details section to PO
+- [x] Implement smart buy price logic (loose vs pack pricing based on quantity)
+- [x] Make buy price non-editable (system-calculated)
+- [x] Create PO detail page with Zoho-inspired layout
+- [x] Add inline editing for quantity (optimistic updates)
+- [x] Add product search and filtering
+- [x] Display company billing details at top
+- [x] Add delivery method selector
+- [x] Show shipping address conditionally for in-store delivery
+- [x] Calculate totals automatically
+- [x] Add tests for smart buy price logic

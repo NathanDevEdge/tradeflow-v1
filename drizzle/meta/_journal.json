@@ -43,6 +43,13 @@
       "when": 1768534794226,
       "tag": "0005_material_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1768538047359,
+      "tag": "0006_chemical_gateway",
+      "breakpoints": true
     }
   ]
 }

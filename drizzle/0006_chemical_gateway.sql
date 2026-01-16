@@ -1,0 +1,2 @@
+ALTER TABLE `purchase_orders` ADD `deliveryMethod` enum('in_store_delivery','pickup_from_supplier') DEFAULT 'pickup_from_supplier' NOT NULL;--> statement-breakpoint
+ALTER TABLE `purchase_orders` ADD `shippingAddress` text;

@@ -186,6 +186,8 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   supplierId: int("supplierId").notNull(),
   poNumber: varchar("poNumber", { length: 50 }).notNull().unique(),
   status: mysqlEnum("status", ["draft", "sent", "received", "cancelled"]).default("draft").notNull(),
+  deliveryMethod: mysqlEnum("deliveryMethod", ["in_store_delivery", "pickup_from_supplier"]).default("pickup_from_supplier").notNull(),
+  shippingAddress: text("shippingAddress"), // Only used when deliveryMethod is in_store_delivery
   totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
   pdfUrl: varchar("pdfUrl", { length: 500 }), // S3 URL for generated PDF

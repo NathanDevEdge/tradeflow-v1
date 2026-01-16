@@ -780,6 +780,8 @@ export const appRouter = router({
       .input(z.object({
         id: z.number(),
         status: z.enum(["draft", "sent", "received", "cancelled"]).optional(),
+        deliveryMethod: z.enum(["in_store_delivery", "pickup_from_supplier"]).optional(),
+        shippingAddress: z.string().optional(),
         notes: z.string().optional(),
         pdfUrl: z.string().optional(),
       }))

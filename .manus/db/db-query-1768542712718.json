@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Clear all business data\nDELETE FROM purchase_order_items;\nDELETE FROM purchase_orders;\nDELETE FROM quote_items;\nDELETE FROM quotes;\nDELETE FROM pricelist_items;\nDELETE FROM pricelists;\nDELETE FROM customers;\nDELETE FROM suppliers;\nDELETE FROM company_settings;\n\n-- Create default organization\nINSERT INTO organizations (name, createdAt, updatedAt) VALUES ('Default Organization', NOW(), NOW());\n\n-- Update existing users to belong to default organization\nUPDATE users SET organizationId = 1 WHERE organizationId IS NULL;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2HyZ5FPVAXarqvM.root --database Fk3otLE6cw9F5sfyFkJMQa --execute \n-- Clear all business data\nDELETE FROM purchase_order_items;\nDELETE FROM purchase_orders;\nDELETE FROM quote_items;\nDELETE FROM quotes;\nDELETE FROM pricelist_items;\nDELETE FROM pricelists;\nDELETE FROM customers;\nDELETE FROM suppliers;\nDELETE FROM company_settings;\n\n-- Create default organization\nINSERT INTO organizations (name, createdAt, updatedAt) VALUES ('Default Organization', NOW(), NOW());\n\n-- Update existing users to belong to default organization\nUPDATE users SET organizationId = 1 WHERE organizationId IS NULL;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3770
+}

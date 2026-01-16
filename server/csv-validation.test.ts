@@ -12,16 +12,19 @@ function createAuthContext(): { ctx: TrpcContext } {
     name: "Test User",
     loginMethod: "email",
     role: "admin",
+    organizationId: 1, // Default organization
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
     subscriptionType: null,
     subscriptionEndDate: null,
     subscriptionStatus: "active",
+    passwordHash: null,
   };
 
   const ctx: TrpcContext = {
     user,
+    organizationId: 1, // Default organization
     req: {
       protocol: "https",
       headers: {},

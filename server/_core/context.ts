@@ -11,6 +11,7 @@ export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  organizationId: number | null;
 };
 
 async function authenticateCustomToken(req: CreateExpressContextOptions["req"]): Promise<User | null> {
@@ -92,5 +93,6 @@ export async function createContext(
     req: opts.req,
     res: opts.res,
     user,
+    organizationId: user?.organizationId || null,
   };
 }

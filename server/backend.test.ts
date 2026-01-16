@@ -16,6 +16,7 @@ function createAuthContext(): { ctx: TrpcContext; user: User } {
     subscriptionType: "monthly",
     subscriptionEndDate: null,
     subscriptionStatus: "active",
+    organizationId: 1, // Default organization
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
@@ -23,6 +24,7 @@ function createAuthContext(): { ctx: TrpcContext; user: User } {
 
   const ctx: TrpcContext = {
     user,
+    organizationId: 1, // Default organization
     req: {
       protocol: "https",
       headers: {},

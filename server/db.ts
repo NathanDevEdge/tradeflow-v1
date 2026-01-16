@@ -1,8 +1,9 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
   users,
+  organizations,
   pricelists,
   pricelistItems,
   customers,
@@ -11,6 +12,8 @@ import {
   quoteItems,
   purchaseOrders,
   purchaseOrderItems,
+  type User,
+  type Organization,
   type Pricelist,
   type PricelistItem,
   type Customer,
@@ -123,60 +126,60 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // Pricelist queries
-export async function getAllPricelists(): Promise<Pricelist[]> {
+export async function getAllPricelists(organizationId: number): Promise<Pricelist[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(pricelists).orderBy(desc(pricelists.createdAt));
+  return db.select().from(pricelists).where(eq(pricelists.organizationId, organizationId)).orderBy(desc(pricelists.createdAt));
 }
 
-export async function getPricelistById(id: number): Promise<Pricelist | undefined> {
+export async function getPricelistById(id: number, organizationId: number): Promise<Pricelist | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(pricelists).where(eq(pricelists.id, id)).limit(1);
+  const result = await db.select().from(pricelists).where(and(eq(pricelists.id, id), eq(pricelists.organizationId, organizationId))).limit(1);
   return result[0];
 }
 
-export async function createPricelist(name: string): Promise<Pricelist> {
+export async function createPricelist(name: string, organizationId: number): Promise<Pricelist> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(pricelists).values({ name });
+  const result = await db.insert(pricelists).values({ name, organizationId });
   const insertedId = Number(result[0].insertId);
-  const created = await getPricelistById(insertedId);
+  const created = await getPricelistById(insertedId, organizationId);
   if (!created) throw new Error("Failed to retrieve created pricelist");
   return created;
 }
 
-export async function updatePricelist(id: number, name: string): Promise<void> {
+export async function updatePricelist(id: number, organizationId: number, name: string): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(pricelists).set({ name }).where(eq(pricelists.id, id));
+  await db.update(pricelists).set({ name }).where(and(eq(pricelists.id, id), eq(pricelists.organizationId, organizationId)));
 }
 
-export async function deletePricelist(id: number): Promise<void> {
+export async function deletePricelist(id: number, organizationId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   // Delete associated items first
-  await db.delete(pricelistItems).where(eq(pricelistItems.pricelistId, id));
-  await db.delete(pricelists).where(eq(pricelists.id, id));
+  await db.delete(pricelistItems).where(and(eq(pricelistItems.pricelistId, id), eq(pricelistItems.organizationId, organizationId)));
+  await db.delete(pricelists).where(and(eq(pricelists.id, id), eq(pricelists.organizationId, organizationId)));
 }
 
 // Pricelist item queries
-export async function getPricelistItems(pricelistId: number): Promise<PricelistItem[]> {
+export async function getPricelistItems(pricelistId: number, organizationId: number): Promise<PricelistItem[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(pricelistItems).where(eq(pricelistItems.pricelistId, pricelistId));
+  return db.select().from(pricelistItems).where(and(eq(pricelistItems.pricelistId, pricelistId), eq(pricelistItems.organizationId, organizationId)));
 }
 
-export async function getAllPricelistItems(): Promise<PricelistItem[]> {
+export async function getAllPricelistItems(organizationId: number): Promise<PricelistItem[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(pricelistItems);
+  return db.select().from(pricelistItems).where(eq(pricelistItems.organizationId, organizationId));
 }
 
-export async function getPricelistItemById(id: number): Promise<PricelistItem | undefined> {
+export async function getPricelistItemById(id: number, organizationId: number): Promise<PricelistItem | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(pricelistItems).where(eq(pricelistItems.id, id)).limit(1);
+  const result = await db.select().from(pricelistItems).where(and(eq(pricelistItems.id, id), eq(pricelistItems.organizationId, organizationId))).limit(1);
   return result[0];
 }
 
@@ -185,7 +188,7 @@ export async function createPricelistItem(item: typeof pricelistItems.$inferInse
   if (!db) throw new Error("Database not available");
   const result = await db.insert(pricelistItems).values(item);
   const insertedId = Number(result[0].insertId);
-  const created = await getPricelistItemById(insertedId);
+  const created = await getPricelistItemById(insertedId, item.organizationId);
   if (!created) throw new Error("Failed to retrieve created item");
   return created;
 }
@@ -197,29 +200,29 @@ export async function bulkCreatePricelistItems(items: typeof pricelistItems.$inf
   await db.insert(pricelistItems).values(items);
 }
 
-export async function updatePricelistItem(id: number, updates: Partial<typeof pricelistItems.$inferInsert>): Promise<void> {
+export async function updatePricelistItem(id: number, organizationId: number, updates: Partial<typeof pricelistItems.$inferInsert>): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(pricelistItems).set(updates).where(eq(pricelistItems.id, id));
+  await db.update(pricelistItems).set(updates).where(and(eq(pricelistItems.id, id), eq(pricelistItems.organizationId, organizationId)));
 }
 
-export async function deletePricelistItem(id: number): Promise<void> {
+export async function deletePricelistItem(id: number, organizationId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(pricelistItems).where(eq(pricelistItems.id, id));
+  await db.delete(pricelistItems).where(and(eq(pricelistItems.id, id), eq(pricelistItems.organizationId, organizationId)));
 }
 
 // Customer queries
-export async function getAllCustomers(): Promise<Customer[]> {
+export async function getAllCustomers(organizationId: number): Promise<Customer[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(customers).orderBy(desc(customers.createdAt));
+  return db.select().from(customers).where(eq(customers.organizationId, organizationId)).orderBy(desc(customers.createdAt));
 }
 
-export async function getCustomerById(id: number): Promise<Customer | undefined> {
+export async function getCustomerById(id: number, organizationId: number): Promise<Customer | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  const result = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.organizationId, organizationId))).limit(1);
   return result[0];
 }
 
@@ -228,34 +231,34 @@ export async function createCustomer(customer: typeof customers.$inferInsert): P
   if (!db) throw new Error("Database not available");
   const result = await db.insert(customers).values(customer);
   const insertedId = Number(result[0].insertId);
-  const created = await getCustomerById(insertedId);
+  const created = await getCustomerById(insertedId, customer.organizationId);
   if (!created) throw new Error("Failed to retrieve created customer");
   return created;
 }
 
-export async function updateCustomer(id: number, updates: Partial<typeof customers.$inferInsert>): Promise<void> {
+export async function updateCustomer(id: number, organizationId: number, updates: Partial<typeof customers.$inferInsert>): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(customers).set(updates).where(eq(customers.id, id));
+  await db.update(customers).set(updates).where(and(eq(customers.id, id), eq(customers.organizationId, organizationId)));
 }
 
-export async function deleteCustomer(id: number): Promise<void> {
+export async function deleteCustomer(id: number, organizationId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(customers).where(eq(customers.id, id));
+  await db.delete(customers).where(and(eq(customers.id, id), eq(customers.organizationId, organizationId)));
 }
 
 // Supplier queries
-export async function getAllSuppliers(): Promise<Supplier[]> {
+export async function getAllSuppliers(organizationId: number): Promise<Supplier[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(suppliers).orderBy(desc(suppliers.createdAt));
+  return db.select().from(suppliers).where(eq(suppliers.organizationId, organizationId)).orderBy(desc(suppliers.createdAt));
 }
 
-export async function getSupplierById(id: number): Promise<Supplier | undefined> {
+export async function getSupplierById(id: number, organizationId: number): Promise<Supplier | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(suppliers).where(eq(suppliers.id, id)).limit(1);
+  const result = await db.select().from(suppliers).where(and(eq(suppliers.id, id), eq(suppliers.organizationId, organizationId))).limit(1);
   return result[0];
 }
 
@@ -264,34 +267,40 @@ export async function createSupplier(supplier: typeof suppliers.$inferInsert): P
   if (!db) throw new Error("Database not available");
   const result = await db.insert(suppliers).values(supplier);
   const insertedId = Number(result[0].insertId);
-  const created = await getSupplierById(insertedId);
+  const created = await getSupplierById(insertedId, supplier.organizationId);
   if (!created) throw new Error("Failed to retrieve created supplier");
   return created;
 }
 
-export async function updateSupplier(id: number, updates: Partial<typeof suppliers.$inferInsert>): Promise<void> {
+export async function updateSupplier(id: number, organizationId: number, updates: Partial<typeof suppliers.$inferInsert>): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(suppliers).set(updates).where(eq(suppliers.id, id));
+  await db.update(suppliers).set(updates).where(and(eq(suppliers.id, id), eq(suppliers.organizationId, organizationId)));
 }
 
-export async function deleteSupplier(id: number): Promise<void> {
+export async function deleteSupplier(id: number, organizationId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(suppliers).where(eq(suppliers.id, id));
+  await db.delete(suppliers).where(and(eq(suppliers.id, id), eq(suppliers.organizationId, organizationId)));
 }
 
 // Quote queries
-export async function getAllQuotes(): Promise<Quote[]> {
+export async function getAllQuotes(organizationId: number): Promise<Quote[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(quotes).orderBy(desc(quotes.createdAt));
+  return db.select().from(quotes).where(eq(quotes.organizationId, organizationId)).orderBy(desc(quotes.createdAt));
 }
 
-export async function getQuoteById(id: number): Promise<(Quote & { items: QuoteItem[] }) | undefined> {
+export async function getQuotesByCustomer(customerId: number, organizationId: number): Promise<Quote[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quotes).where(and(eq(quotes.customerId, customerId), eq(quotes.organizationId, organizationId))).orderBy(desc(quotes.createdAt));
+}
+
+export async function getQuoteById(id: number, organizationId: number): Promise<(Quote & { items: QuoteItem[] }) | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const quoteResult = await db.select().from(quotes).where(eq(quotes.id, id)).limit(1);
+  const quoteResult = await db.select().from(quotes).where(and(eq(quotes.id, id), eq(quotes.organizationId, organizationId))).limit(1);
   if (!quoteResult[0]) return undefined;
   
   const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, id));
@@ -303,22 +312,22 @@ export async function createQuote(quote: typeof quotes.$inferInsert): Promise<Qu
   if (!db) throw new Error("Database not available");
   const result = await db.insert(quotes).values(quote);
   const insertedId = Number(result[0].insertId);
-  const created = await getQuoteById(insertedId);
+  const created = await getQuoteById(insertedId, quote.organizationId);
   if (!created) throw new Error("Failed to retrieve created quote");
   return created;
 }
 
-export async function updateQuote(id: number, updates: Partial<typeof quotes.$inferInsert>): Promise<void> {
+export async function updateQuote(id: number, organizationId: number, updates: Partial<typeof quotes.$inferInsert>): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(quotes).set(updates).where(eq(quotes.id, id));
+  await db.update(quotes).set(updates).where(and(eq(quotes.id, id), eq(quotes.organizationId, organizationId)));
 }
 
-export async function deleteQuote(id: number): Promise<void> {
+export async function deleteQuote(id: number, organizationId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(quoteItems).where(eq(quoteItems.quoteId, id));
-  await db.delete(quotes).where(eq(quotes.id, id));
+  await db.delete(quotes).where(and(eq(quotes.id, id), eq(quotes.organizationId, organizationId)));
 }
 
 // Quote item queries
@@ -351,22 +360,22 @@ export async function deleteQuoteItem(id: number): Promise<void> {
 }
 
 // Purchase order queries
-export async function getAllPurchaseOrders(): Promise<PurchaseOrder[]> {
+export async function getAllPurchaseOrders(organizationId: number): Promise<PurchaseOrder[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(purchaseOrders).orderBy(desc(purchaseOrders.createdAt));
+  return db.select().from(purchaseOrders).where(eq(purchaseOrders.organizationId, organizationId)).orderBy(desc(purchaseOrders.createdAt));
 }
 
-export async function getPurchaseOrdersBySupplier(supplierId: number): Promise<PurchaseOrder[]> {
+export async function getPurchaseOrdersBySupplier(supplierId: number, organizationId: number): Promise<PurchaseOrder[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(purchaseOrders).where(eq(purchaseOrders.supplierId, supplierId)).orderBy(desc(purchaseOrders.createdAt));
+  return db.select().from(purchaseOrders).where(and(eq(purchaseOrders.supplierId, supplierId), eq(purchaseOrders.organizationId, organizationId))).orderBy(desc(purchaseOrders.createdAt));
 }
 
-export async function getPurchaseOrderById(id: number): Promise<(PurchaseOrder & { items: PurchaseOrderItem[] }) | undefined> {
+export async function getPurchaseOrderById(id: number, organizationId: number): Promise<(PurchaseOrder & { items: PurchaseOrderItem[] }) | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const poResult = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).limit(1);
+  const poResult = await db.select().from(purchaseOrders).where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId))).limit(1);
   if (!poResult[0]) return undefined;
   
   const items = await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
@@ -378,22 +387,22 @@ export async function createPurchaseOrder(po: typeof purchaseOrders.$inferInsert
   if (!db) throw new Error("Database not available");
   const result = await db.insert(purchaseOrders).values(po);
   const insertedId = Number(result[0].insertId);
-  const created = await getPurchaseOrderById(insertedId);
+  const created = await getPurchaseOrderById(insertedId, po.organizationId);
   if (!created) throw new Error("Failed to retrieve created purchase order");
   return created;
 }
 
-export async function updatePurchaseOrder(id: number, updates: Partial<typeof purchaseOrders.$inferInsert>): Promise<void> {
+export async function updatePurchaseOrder(id: number, organizationId: number, updates: Partial<typeof purchaseOrders.$inferInsert>): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(purchaseOrders).set(updates).where(eq(purchaseOrders.id, id));
+  await db.update(purchaseOrders).set(updates).where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)));
 }
 
-export async function deletePurchaseOrder(id: number): Promise<void> {
+export async function deletePurchaseOrder(id: number, organizationId: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
-  await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
+  await db.delete(purchaseOrders).where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.organizationId, organizationId)));
 }
 
 // Purchase order item queries
@@ -426,20 +435,20 @@ export async function deletePurchaseOrderItem(id: number): Promise<void> {
 }
 
 // Company Settings
-export async function getCompanySettings(): Promise<typeof companySettings.$inferSelect | null> {
+export async function getCompanySettings(organizationId: number): Promise<typeof companySettings.$inferSelect | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const { companySettings } = await import("../drizzle/schema");
-  const settings = await db.select().from(companySettings).limit(1);
+  const settings = await db.select().from(companySettings).where(eq(companySettings.organizationId, organizationId)).limit(1);
   return settings[0] || null;
 }
 
-export async function upsertCompanySettings(settings: Partial<typeof companySettings.$inferInsert>): Promise<typeof companySettings.$inferSelect> {
+export async function upsertCompanySettings(organizationId: number, settings: Partial<typeof companySettings.$inferInsert>): Promise<typeof companySettings.$inferSelect> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const { companySettings } = await import("../drizzle/schema");
   
-  const existing = await db.select().from(companySettings).limit(1);
+  const existing = await db.select().from(companySettings).where(eq(companySettings.organizationId, organizationId)).limit(1);
   
   if (existing.length > 0) {
     // Update existing
@@ -448,9 +457,46 @@ export async function upsertCompanySettings(settings: Partial<typeof companySett
     return updated[0];
   } else {
     // Insert new
-    const result = await db.insert(companySettings).values(settings);
+    const result = await db.insert(companySettings).values({ ...settings, organizationId });
     const insertedId = Number(result[0].insertId);
     const created = await db.select().from(companySettings).where(eq(companySettings.id, insertedId)).limit(1);
     return created[0];
   }
+}
+
+// Organization queries
+export async function getAllOrganizations(): Promise<Organization[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(organizations).orderBy(desc(organizations.createdAt));
+}
+
+export async function getOrganizationById(id: number): Promise<Organization | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(organizations).where(eq(organizations.id, id));
+  return result[0];
+}
+
+export async function createOrganization(name: string): Promise<Organization> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(organizations).values({ name });
+  const insertId = Number(result[0].insertId);
+  const created = await getOrganizationById(insertId);
+  if (!created) throw new Error("Failed to create organization");
+  return created;
+}
+
+// User queries
+export async function getAllUsers(): Promise<User[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).orderBy(desc(users.createdAt));
+}
+
+export async function assignUserToOrganization(userId: number, organizationId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ organizationId }).where(eq(users.id, userId));
 }

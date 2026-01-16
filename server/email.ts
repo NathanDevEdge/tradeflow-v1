@@ -5,15 +5,15 @@ import * as db from "./db";
 /**
  * Send purchase order PDF to supplier via email
  */
-export async function sendPurchaseOrderEmail(poId: number): Promise<void> {
-  const po = await db.getPurchaseOrderById(poId);
+export async function sendPurchaseOrderEmail(poId: number, organizationId: number): Promise<void> {
+  const po = await db.getPurchaseOrderById(poId, organizationId);
   if (!po) throw new Error("Purchase order not found");
   
   if (!po.pdfUrl) {
     throw new Error("Purchase order PDF must be generated before sending email");
   }
   
-  const supplier = await db.getSupplierById(po.supplierId);
+  const supplier = await db.getSupplierById(po.supplierId, organizationId);
   if (!supplier) throw new Error("Supplier not found");
   
   if (!supplier.poEmail) {
@@ -79,7 +79,7 @@ Best regards
   });
   
   // Update PO status to "sent" after sending email
-  await db.updatePurchaseOrder(poId, { status: "sent" });
+  await db.updatePurchaseOrder(poId, organizationId, { status: "sent" });
   
   // In production, uncomment and configure with your email service:
   /*

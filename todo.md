@@ -249,3 +249,22 @@
 - [x] Add "Create New PO" button on supplier detail page
 - [x] Add backend procedure to get supplier by ID
 - [x] Add backend procedure to get POs by supplier ID
+
+## Multi-Tenant Architecture
+- [x] Create organizations table in database
+- [x] Add organizationId to users table
+- [x] Add organizationId to pricelists table
+- [x] Add organizationId to pricelistItems table
+- [x] Add organizationId to customers table
+- [x] Add organizationId to suppliers table
+- [x] Add organizationId to quotes table
+- [x] Add organizationId to purchaseOrders table
+- [x] Add organizationId to company_settings table
+- [x] Create middleware to inject organizationId into context
+- [x] Update all database helpers to filter by organizationId
+- [x] Update all tRPC procedures to use organizationId
+- [x] Build admin panel UI for creating organizations
+- [x] Build admin panel UI for assigning users to organizations
+- [ ] Add organization selector for admin users
+- [x] Migrate existing data to default organization
+- [x] Test data isolation between organizations

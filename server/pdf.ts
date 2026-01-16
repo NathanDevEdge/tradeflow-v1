@@ -27,9 +27,10 @@ async function drawPremiumHeader(
   title: string,
   documentNumber: string,
   date: Date,
-  status: string
+  status: string,
+  organizationId: number
 ) {
-  const settings = await db.getCompanySettings();
+  const settings = await db.getCompanySettings(organizationId);
   
   // Header background bar
   doc.rect(0, 0, 612, 120).fill(COLORS.primary);
@@ -242,8 +243,8 @@ function drawTotalsSection(
 /**
  * Helper to draw footer
  */
-async function drawFooter(doc: PDFKit.PDFDocument, pageNumber: number, totalPages: number) {
-  const settings = await db.getCompanySettings();
+async function drawFooter(doc: PDFKit.PDFDocument, pageNumber: number, totalPages: number, organizationId: number) {
+  const settings = await db.getCompanySettings(organizationId);
   
   doc.fontSize(8).font(FONTS.regular).fill(COLORS.secondary);
   
@@ -267,11 +268,11 @@ async function drawFooter(doc: PDFKit.PDFDocument, pageNumber: number, totalPage
  * Generate a customer-facing quote PDF
  * IMPORTANT: Must NOT include buy prices or margin data
  */
-export async function generateQuotePDF(quoteId: number): Promise<string> {
-  const quote = await db.getQuoteById(quoteId);
+export async function generateQuotePDF(quoteId: number, organizationId: number): Promise<string> {
+  const quote = await db.getQuoteById(quoteId, organizationId);
   if (!quote) throw new Error("Quote not found");
   
-  const customer = await db.getCustomerById(quote.customerId);
+  const customer = await db.getCustomerById(quote.customerId, organizationId);
   if (!customer) throw new Error("Customer not found");
   
   const items = await db.getQuoteItems(quoteId);
@@ -297,7 +298,8 @@ export async function generateQuotePDF(quoteId: number): Promise<string> {
           "QUOTE",
           quote.quoteNumber,
           new Date(quote.createdAt),
-          quote.status
+          quote.status,
+          organizationId
         );
         
         y += 20;
@@ -369,7 +371,7 @@ export async function generateQuotePDF(quoteId: number): Promise<string> {
         const range = doc.bufferedPageRange();
         for (let i = 0; i < range.count; i++) {
           doc.switchToPage(i);
-          await drawFooter(doc, i + 1, range.count);
+          await drawFooter(doc, i + 1, range.count, organizationId);
         }
         
         doc.end();
@@ -391,11 +393,11 @@ export async function generateQuotePDF(quoteId: number): Promise<string> {
  * Generate a supplier-facing purchase order PDF
  * IMPORTANT: Must include buy prices but NOT sell prices or margins
  */
-export async function generatePurchaseOrderPDF(purchaseOrderId: number): Promise<string> {
-  const po = await db.getPurchaseOrderById(purchaseOrderId);
+export async function generatePurchaseOrderPDF(purchaseOrderId: number, organizationId: number): Promise<string> {
+  const po = await db.getPurchaseOrderById(purchaseOrderId, organizationId);
   if (!po) throw new Error("Purchase order not found");
   
-  const supplier = await db.getSupplierById(po.supplierId);
+  const supplier = await db.getSupplierById(po.supplierId, organizationId);
   if (!supplier) throw new Error("Supplier not found");
   
   const items = await db.getPurchaseOrderItems(purchaseOrderId);
@@ -421,7 +423,8 @@ export async function generatePurchaseOrderPDF(purchaseOrderId: number): Promise
           "PURCHASE ORDER",
           po.poNumber,
           new Date(po.createdAt),
-          po.status
+          po.status,
+          organizationId
         );
         
         y += 20;
@@ -526,7 +529,7 @@ export async function generatePurchaseOrderPDF(purchaseOrderId: number): Promise
         const range = doc.bufferedPageRange();
         for (let i = 0; i < range.count; i++) {
           doc.switchToPage(i);
-          await drawFooter(doc, i + 1, range.count);
+          await drawFooter(doc, i + 1, range.count, organizationId);
         }
         
         doc.end();

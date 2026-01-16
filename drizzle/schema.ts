@@ -1,4 +1,17 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, index } from "drizzle-orm/mysql-core";
+
+/**
+ * Organizations table for multi-tenancy
+ */
+export const organizations = mysqlTable("organizations", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
 
 /**
  * Core user table supporting dual authentication:
@@ -20,7 +33,10 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn"),
-});
+  organizationId: int("organizationId"),
+}, (table) => ({
+  organizationIdx: index("organization_idx").on(table.organizationId),
+}));
 
 /**
  * Password reset tokens for email/password users
@@ -55,6 +71,7 @@ export type InsertContactInquiry = typeof contactInquiries.$inferInsert;
  */
 export const companySettings = mysqlTable("company_settings", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().unique(),
   companyName: varchar("company_name", { length: 255 }),
   abn: varchar("abn", { length: 50 }),
   address: text("address"),
@@ -91,9 +108,12 @@ export type InsertUserInvitation = typeof userInvitations.$inferInsert;
 export const pricelists = mysqlTable("pricelists", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  organizationId: int("organizationId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  organizationIdx: index("pricelist_organization_idx").on(table.organizationId),
+}));
 
 export type Pricelist = typeof pricelists.$inferSelect;
 export type InsertPricelist = typeof pricelists.$inferInsert;
@@ -106,6 +126,7 @@ export type InsertPricelist = typeof pricelists.$inferInsert;
 export const pricelistItems = mysqlTable("pricelist_items", {
   id: int("id").autoincrement().primaryKey(),
   pricelistId: int("pricelistId").notNull(),
+  organizationId: int("organizationId").notNull(),
   itemName: varchar("itemName", { length: 500 }).notNull(),
   skuCode: varchar("skuCode", { length: 100 }),
   packSize: varchar("packSize", { length: 100 }),
@@ -126,6 +147,7 @@ export type InsertPricelistItem = typeof pricelistItems.$inferInsert;
  */
 export const customers = mysqlTable("customers", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull(),
   companyName: varchar("companyName", { length: 255 }).notNull(),
   contactName: varchar("contactName", { length: 255 }),
   email: varchar("email", { length: 320 }),
@@ -144,6 +166,7 @@ export type InsertCustomer = typeof customers.$inferInsert;
  */
 export const suppliers = mysqlTable("suppliers", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull(),
   companyName: varchar("companyName", { length: 255 }).notNull(),
   billingAddress: text("billingAddress"),
   keyContactName: varchar("keyContactName", { length: 255 }),
@@ -162,6 +185,7 @@ export type InsertSupplier = typeof suppliers.$inferInsert;
  */
 export const quotes = mysqlTable("quotes", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull(),
   customerId: int("customerId").notNull(),
   quoteNumber: varchar("quoteNumber", { length: 50 }).notNull().unique(),
   status: mysqlEnum("status", ["draft", "sent", "accepted", "declined"]).default("draft").notNull(),
@@ -202,6 +226,7 @@ export type InsertQuoteItem = typeof quoteItems.$inferInsert;
  */
 export const purchaseOrders = mysqlTable("purchase_orders", {
   id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull(),
   supplierId: int("supplierId").notNull(),
   poNumber: varchar("poNumber", { length: 50 }).notNull().unique(),
   status: mysqlEnum("status", ["draft", "sent", "received", "cancelled"]).default("draft").notNull(),

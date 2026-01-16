@@ -6,6 +6,8 @@ import { z } from "zod";
 import * as db from "./db";
 import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdf";
 import { sendPurchaseOrderEmail } from "./email";
+import * as customAuth from "./customAuth";
+import { SignJWT } from "jose";
 
 // CSV validation schema
 const csvRowSchema = z.object({
@@ -25,6 +27,80 @@ function parseDecimal(value: string | undefined): string | undefined {
 }
 
 export const appRouter = router({
+  customAuth: router({
+    register: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await customAuth.registerUser(input.email, input.password, input.name);
+        return { success: true };
+      }),
+    
+    login: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await customAuth.authenticateUser(input.email, input.password);
+        
+        // Create session token using the same method as OAuth
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret");
+        const token = await new SignJWT({ userId: user.id, email: user.email })
+          .setProtectedHeader({ alg: "HS256" })
+          .setExpirationTime("7d")
+          .sign(secret);
+        
+        // Set cookie
+        const cookieOptions = {
+          httpOnly: true,
+          secure: ctx.req.protocol === "https",
+          sameSite: ctx.req.protocol === "https" ? "none" as const : "lax" as const,
+          path: "/",
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        };
+        ctx.res.cookie("manus_session", token, cookieOptions);
+        
+        return { success: true, user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+      }),
+    
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        try {
+          const token = await customAuth.createPasswordResetToken(input.email);
+          // TODO: Send email with reset link containing token
+          console.log(`[Password Reset] Token for ${input.email}: ${token}`);
+          return { success: true };
+        } catch (error: any) {
+          // Don't reveal if email exists
+          return { success: true };
+        }
+      }),
+    
+    resetPassword: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input }) => {
+        await customAuth.resetPassword(input.token, input.newPassword);
+        return { success: true };
+      }),
+    
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await customAuth.changePassword(ctx.user.id, input.currentPassword, input.newPassword);
+        return { success: true };
+      }),
+  }),
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

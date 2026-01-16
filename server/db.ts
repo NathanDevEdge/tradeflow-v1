@@ -37,8 +37,8 @@ export async function getDb() {
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+  if (!user.openId && !user.email) {
+    throw new Error("Either openId or email is required for upsert");
   }
 
   const db = await getDb();
@@ -50,6 +50,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   try {
     const values: InsertUser = {
       openId: user.openId,
+      email: user.email || user.openId || "temp@example.com", // Temporary fallback
     };
     const updateSet: Record<string, unknown> = {};
 
@@ -59,8 +60,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
+      // Email field is required, don't update if null
+      if (field === "email" && !value) return;
       const normalized = value ?? null;
-      values[field] = normalized;
+      values[field] = normalized as any;
       updateSet[field] = normalized;
     };
 
@@ -93,6 +96,18 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
 }
 
 export async function getUserByOpenId(openId: string) {

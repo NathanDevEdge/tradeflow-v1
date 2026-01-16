@@ -15,6 +15,13 @@
       "when": 1768520120103,
       "tag": "0001_nosy_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1768522216335,
+      "tag": "0002_deep_pride",
+      "breakpoints": true
     }
   ]
 }

@@ -47,3 +47,16 @@
 - [x] Test margin calculations
 - [x] Test PDF generation with data separation
 - [x] Test email functionality
+
+## Custom Authentication System
+- [x] Update user schema to support email/password authentication
+- [x] Add password hashing with bcrypt
+- [x] Create login endpoint with email/password validation
+- [x] Create registration endpoint for new users
+- [x] Implement password reset functionality
+- [x] Build custom login page UI
+- [x] Build registration page UI
+- [x] Build password reset page UI
+- [x] Update session management for custom auth
+- [x] Test authentication flows
+- [x] Update context to support custom auth tokens

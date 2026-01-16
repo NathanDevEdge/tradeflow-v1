@@ -277,7 +277,7 @@ class SDKServer {
         await db.upsertUser({
           openId: userInfo.openId,
           name: userInfo.name || null,
-          email: userInfo.email ?? null,
+          email: userInfo.email || `${userInfo.openId}@oauth.local`,
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
           lastSignedIn: signedInAt,
         });
@@ -294,6 +294,9 @@ class SDKServer {
 
     await db.upsertUser({
       openId: user.openId,
+      email: user.email || `${user.openId}@oauth.local`, // Use OAuth email or generate one
+      name: user.name || undefined,
+      loginMethod: "oauth",
       lastSignedIn: signedInAt,
     });
 

@@ -184,3 +184,11 @@
 - [x] Ensure totals display correctly in quotes list
 - [x] Ensure totals display correctly in customer detail page
 - [x] Trigger recalculation after adding/updating/deleting items
+
+## Quote Builder UX Improvements
+- [x] Implement optimistic updates for quantity changes (instant feedback)
+- [x] Implement optimistic updates for unit price changes (instant feedback)
+- [x] Implement optimistic updates for adding items (instant feedback)
+- [x] Fix unit price input to allow fluid typing (not locked to decimal format)
+- [x] Remove 2-3 second delay when updating items
+- [x] Show silent background saves without blocking UI

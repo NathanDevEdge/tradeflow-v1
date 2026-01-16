@@ -25,6 +25,7 @@ export default function QuoteDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPricelistId, setSelectedPricelistId] = useState<string>("all");
   const [editingItems, setEditingItems] = useState<Record<number, { quantity: number; sellPrice: number }>>({});
+  const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
 
   const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
   const { data: customer } = trpc.customers.get.useQuery(
@@ -36,32 +37,125 @@ export default function QuoteDetail() {
   const utils = trpc.useUtils();
 
   const addItemMutation = trpc.quoteItems.create.useMutation({
+    onMutate: async (newItem) => {
+      // Cancel outgoing refetches
+      await utils.quotes.get.cancel({ id: quoteId });
+      
+      // Snapshot the previous value
+      const previousQuote = utils.quotes.get.getData({ id: quoteId });
+      
+      // Optimistically update to the new value
+      if (previousQuote) {
+        const optimisticItem = {
+          id: Date.now(), // Temporary ID
+          quoteId,
+          pricelistItemId: newItem.pricelistItemId || null,
+          itemName: newItem.itemName,
+          quantity: newItem.quantity.toFixed(2),
+          sellPrice: newItem.sellPrice.toFixed(2),
+          buyPrice: newItem.buyPrice.toFixed(2),
+          margin: ((newItem.sellPrice - newItem.buyPrice) * newItem.quantity).toFixed(2),
+          lineTotal: (newItem.sellPrice * newItem.quantity).toFixed(2),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        
+        utils.quotes.get.setData({ id: quoteId }, {
+          ...previousQuote,
+          items: [...(previousQuote.items || []), optimisticItem],
+        });
+      }
+      
+      return { previousQuote };
+    },
     onSuccess: async () => {
       await utils.quotes.get.invalidate({ id: quoteId });
       setSearchQuery("");
-      toast.success("Item added to quote");
     },
-    onError: (error) => {
+    onError: (error, newItem, context) => {
+      // Rollback on error
+      if (context?.previousQuote) {
+        utils.quotes.get.setData({ id: quoteId }, context.previousQuote);
+      }
       toast.error(error.message);
     },
   });
 
   const updateItemMutation = trpc.quoteItems.update.useMutation({
+    onMutate: async (updatedItem) => {
+      // Cancel outgoing refetches
+      await utils.quotes.get.cancel({ id: quoteId });
+      
+      // Snapshot the previous value
+      const previousQuote = utils.quotes.get.getData({ id: quoteId });
+      
+      // Optimistically update to the new value
+      if (previousQuote && previousQuote.items) {
+        const updatedItems = previousQuote.items.map(item => {
+          if (item.id === updatedItem.id) {
+            const quantity = updatedItem.quantity ?? parseFloat(item.quantity);
+            const sellPrice = updatedItem.sellPrice ?? parseFloat(item.sellPrice);
+            const buyPrice = parseFloat(item.buyPrice);
+            const lineTotal = quantity * sellPrice;
+            const margin = (sellPrice - buyPrice) * quantity;
+            
+            return {
+              ...item,
+              quantity: quantity.toFixed(2),
+              sellPrice: sellPrice.toFixed(2),
+              lineTotal: lineTotal.toFixed(2),
+              margin: margin.toFixed(2),
+            };
+          }
+          return item;
+        });
+        
+        utils.quotes.get.setData({ id: quoteId }, {
+          ...previousQuote,
+          items: updatedItems,
+        });
+      }
+      
+      return { previousQuote };
+    },
     onSuccess: async () => {
       await utils.quotes.get.invalidate({ id: quoteId });
-      toast.success("Item updated");
     },
-    onError: (error) => {
+    onError: (error, updatedItem, context) => {
+      // Rollback on error
+      if (context?.previousQuote) {
+        utils.quotes.get.setData({ id: quoteId }, context.previousQuote);
+      }
       toast.error(error.message);
     },
   });
 
   const deleteItemMutation = trpc.quoteItems.delete.useMutation({
+    onMutate: async (deletedItem) => {
+      // Cancel outgoing refetches
+      await utils.quotes.get.cancel({ id: quoteId });
+      
+      // Snapshot the previous value
+      const previousQuote = utils.quotes.get.getData({ id: quoteId });
+      
+      // Optimistically update to the new value
+      if (previousQuote && previousQuote.items) {
+        utils.quotes.get.setData({ id: quoteId }, {
+          ...previousQuote,
+          items: previousQuote.items.filter(item => item.id !== deletedItem.id),
+        });
+      }
+      
+      return { previousQuote };
+    },
     onSuccess: async () => {
       await utils.quotes.get.invalidate({ id: quoteId });
-      toast.success("Item removed from quote");
     },
-    onError: (error) => {
+    onError: (error, deletedItem, context) => {
+      // Rollback on error
+      if (context?.previousQuote) {
+        utils.quotes.get.setData({ id: quoteId }, context.previousQuote);
+      }
       toast.error(error.message);
     },
   });
@@ -396,20 +490,31 @@ export default function QuoteDetail() {
                             <div className="flex items-center justify-end gap-1">
                               <span className="text-muted-foreground">$</span>
                               <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={sellPrice.toFixed(2)}
+                                type="text"
+                                inputMode="decimal"
+                                value={priceInputs[item.id] ?? sellPrice.toFixed(2)}
                                 onChange={(e) => {
-                                  const newPrice = parseFloat(e.target.value) || 0;
-      setEditingItems(prev => ({
-        ...prev,
-        [item.id]: { quantity: prev[item.id]?.quantity ?? item.quantity, sellPrice: newPrice }
-      }));
+                                  const value = e.target.value;
+                                  // Allow empty, numbers, and decimal point
+                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                    setPriceInputs(prev => ({ ...prev, [item.id]: value }));
+                                    const newPrice = parseFloat(value) || 0;
+                                    setEditingItems(prev => ({
+                                      ...prev,
+                                      [item.id]: { quantity: prev[item.id]?.quantity ?? qty, sellPrice: newPrice }
+                                    }));
+                                  }
+                                }}
+                                onFocus={(e) => {
+                                  // Select all on focus for easy replacement
+                                  e.target.select();
                                 }}
                                 onBlur={() => {
+                                  // Clean up the input display
+                                  const finalPrice = sellPrice || 0;
+                                  setPriceInputs(prev => ({ ...prev, [item.id]: finalPrice.toFixed(2) }));
                                   if (hasChanges) {
-                                    handleUpdateItem(item.id, qty, sellPrice);
+                                    handleUpdateItem(item.id, qty, finalPrice);
                                   }
                                 }}
                                 className="w-28 text-right"

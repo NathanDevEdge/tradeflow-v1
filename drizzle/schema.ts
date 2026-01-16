@@ -14,6 +14,9 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth' or 'email'
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   status: mysqlEnum("status", ["active", "inactive", "pending"]).default("active").notNull(),
+  subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]),
+  subscriptionEndDate: timestamp("subscriptionEndDate"),
+  subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "expired", "cancelled"]).default("active"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn"),
@@ -35,7 +38,24 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
- * Pricelists - groups of items from CSV uploads
+ * User invitations for admin-generated accounts
+ */
+export const userInvitations = mysqlTable("user_invitations", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  invitedBy: int("invitedBy").notNull(), // Admin user ID
+  subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  used: int("used").default(0).notNull(), // 0 = unused, 1 = used
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserInvitation = typeof userInvitations.$inferSelect;
+export type InsertUserInvitation = typeof userInvitations.$inferInsert;
+
+/**
+ * Password reset tokens for email/password users
  */
 export const pricelists = mysqlTable("pricelists", {
   id: int("id").autoincrement().primaryKey(),

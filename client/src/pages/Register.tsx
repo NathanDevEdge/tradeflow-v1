@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,16 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
+
+  // Check for invitation token in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      setInvitationToken(token);
+    }
+  }, []);
 
   const registerMutation = trpc.customAuth.register.useMutation({
     onSuccess: () => {
@@ -41,7 +51,12 @@ export default function Register() {
     }
 
     setIsLoading(true);
-    registerMutation.mutate({ email, password, name });
+    registerMutation.mutate({
+      email,
+      password,
+      name,
+      invitationToken: invitationToken || undefined,
+    });
   };
 
   return (

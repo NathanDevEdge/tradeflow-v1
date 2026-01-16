@@ -24,8 +24,14 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 /**
  * Register a new user with email and password
+ * Optionally with an invitation token for subscription setup
  */
-export async function registerUser(email: string, password: string, name?: string) {
+export async function registerUser(
+  email: string,
+  password: string,
+  name?: string,
+  invitationToken?: string
+) {
   const database = await getDb();
   if (!database) throw new Error("Database not available");
 
@@ -38,6 +44,30 @@ export async function registerUser(email: string, password: string, name?: strin
   // Hash password
   const passwordHash = await hashPassword(password);
 
+  // Check if there's an invitation token
+  let subscriptionType: "monthly" | "annual" | "indefinite" | null = null;
+  let subscriptionEndDate: Date | null = null;
+  let subscriptionStatus: "active" | "expired" | "cancelled" = "active";
+
+  if (invitationToken) {
+    const { getInvitationByToken, markInvitationAsUsed, calculateSubscriptionEndDate } = await import("./admin");
+    const invitation = await getInvitationByToken(invitationToken);
+    
+    if (!invitation) {
+      throw new Error("Invalid or expired invitation token");
+    }
+    
+    if (invitation.email !== email) {
+      throw new Error("This invitation was sent to a different email address");
+    }
+    
+    subscriptionType = invitation.subscriptionType;
+    subscriptionEndDate = calculateSubscriptionEndDate(invitation.subscriptionType);
+    
+    // Mark invitation as used
+    await markInvitationAsUsed(invitationToken);
+  }
+
   // Create user
   const result = await database.insert(users).values({
     email,
@@ -46,6 +76,9 @@ export async function registerUser(email: string, password: string, name?: strin
     loginMethod: "email",
     role: "user",
     status: "active",
+    subscriptionType,
+    subscriptionEndDate,
+    subscriptionStatus,
   });
 
   return result;

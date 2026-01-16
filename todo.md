@@ -64,3 +64,13 @@
 ## Hidden Admin Access
 - [x] Create /admin/login/9967 route that redirects to OAuth
 - [x] Test admin route accessibility
+
+## Admin Panel & User Management
+- [x] Add subscription fields to user schema (subscriptionType, subscriptionEndDate, subscriptionStatus)
+- [x] Create user invitations table for tracking invite tokens
+- [x] Build admin panel UI page
+- [x] Implement user list with subscription status display
+- [x] Add invite user functionality with email generation
+- [x] Create subscription management (extend, cancel, change type)
+- [x] Add demo account (demo@devedge.com.au / demo123!) with indefinite subscription
+- [x] Test admin panel functionality

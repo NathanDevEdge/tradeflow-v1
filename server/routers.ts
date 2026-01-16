@@ -3,10 +3,14 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import * as db from "./db";
+import * as dbHelpers from "./db";
+import { getDb } from "./db";
+import { users } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdf";
 import { sendPurchaseOrderEmail } from "./email";
 import * as customAuth from "./customAuth";
+import * as admin from "./admin";
 import { SignJWT } from "jose";
 
 // CSV validation schema
@@ -26,16 +30,93 @@ function parseDecimal(value: string | undefined): string | undefined {
   return isNaN(parsed) ? undefined : parsed.toFixed(2);
 }
 
+// Admin-only procedure
+const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") {
+    throw new Error("Admin access required");
+  }
+  return next({ ctx });
+});
+
 export const appRouter = router({
+  admin: router({
+    getAllUsers: adminProcedure.query(async () => {
+      const allUsers = await admin.getAllUsers();
+      return allUsers.map(user => ({
+        ...user,
+        daysRemaining: admin.calculateDaysRemaining(user.subscriptionEndDate),
+      }));
+    }),
+
+    inviteUser: adminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        subscriptionType: z.enum(["monthly", "annual", "indefinite"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { token, inviteUrl } = await admin.createUserInvitation(
+          input.email,
+          input.subscriptionType,
+          ctx.user.id
+        );
+        return { success: true, inviteUrl, token };
+      }),
+
+    updateSubscription: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        subscriptionType: z.enum(["monthly", "annual", "indefinite"]),
+        subscriptionStatus: z.enum(["active", "expired", "cancelled"]),
+      }))
+      .mutation(async ({ input }) => {
+        await admin.updateUserSubscription(
+          input.userId,
+          input.subscriptionType,
+          input.subscriptionStatus
+        );
+        return { success: true };
+      }),
+
+    extendSubscription: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        days: z.number().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        await admin.extendSubscription(input.userId, input.days);
+        return { success: true };
+      }),
+
+    getPendingInvitations: adminProcedure.query(async () => {
+      return await admin.getPendingInvitations();
+    }),
+
+    deleteUser: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        
+        await database.delete(users).where(eq(users.id, input.userId));
+        return { success: true };
+      }),
+  }),
+
   customAuth: router({
     register: publicProcedure
       .input(z.object({
         email: z.string().email(),
         password: z.string().min(8),
         name: z.string().optional(),
+        invitationToken: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        await customAuth.registerUser(input.email, input.password, input.name);
+        await customAuth.registerUser(
+          input.email,
+          input.password,
+          input.name,
+          input.invitationToken
+        );
         return { success: true };
       }),
     
@@ -115,32 +196,32 @@ export const appRouter = router({
 
   pricelists: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllPricelists();
+      return await dbHelpers.getAllPricelists();
     }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return await db.getPricelistById(input.id);
+        return await dbHelpers.getPricelistById(input.id);
       }),
     
     create: protectedProcedure
       .input(z.object({ name: z.string().min(1) }))
       .mutation(async ({ input }) => {
-        return await db.createPricelist(input.name);
+        return await dbHelpers.createPricelist(input.name);
       }),
     
     update: protectedProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1) }))
       .mutation(async ({ input }) => {
-        await db.updatePricelist(input.id, input.name);
+        await dbHelpers.updatePricelist(input.id, input.name);
         return { success: true };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deletePricelist(input.id);
+        await dbHelpers.deletePricelist(input.id);
         return { success: true };
       }),
   }),
@@ -149,13 +230,13 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ pricelistId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getPricelistItems(input.pricelistId);
+        return await dbHelpers.getPricelistItems(input.pricelistId);
       }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return await db.getPricelistItemById(input.id);
+        return await dbHelpers.getPricelistItemById(input.id);
       }),
     
     uploadCSV: protectedProcedure
@@ -165,7 +246,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const errors: string[] = [];
-        const validItems: Array<Parameters<typeof db.createPricelistItem>[0]> = [];
+        const validItems: Array<Parameters<typeof dbHelpers.createPricelistItem>[0]> = [];
 
         input.csvData.forEach((row, index) => {
           try {
@@ -207,7 +288,7 @@ export const appRouter = router({
           throw new Error(`CSV validation failed:\n${errors.join("\n")}`);
         }
 
-        await db.bulkCreatePricelistItems(validItems);
+        await dbHelpers.bulkCreatePricelistItems(validItems);
         return { success: true, itemsCreated: validItems.length };
       }),
     
@@ -233,7 +314,7 @@ export const appRouter = router({
           }
         });
 
-        await db.updatePricelistItem(id, cleanUpdates);
+        await dbHelpers.updatePricelistItem(id, cleanUpdates);
         return { success: true };
       }),
     
@@ -246,7 +327,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         for (const update of input.updates) {
-          await db.updatePricelistItem(update.id, { sellPrice: update.sellPrice });
+          await dbHelpers.updatePricelistItem(update.id, { sellPrice: update.sellPrice });
         }
         return { success: true, updatedCount: input.updates.length };
       }),
@@ -254,20 +335,20 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deletePricelistItem(input.id);
+        await dbHelpers.deletePricelistItem(input.id);
         return { success: true };
       }),
   }),
 
   customers: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllCustomers();
+      return await dbHelpers.getAllCustomers();
     }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return await db.getCustomerById(input.id);
+        return await dbHelpers.getCustomerById(input.id);
       }),
     
     create: protectedProcedure
@@ -280,7 +361,7 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        return await db.createCustomer({
+        return await dbHelpers.createCustomer({
           ...input,
           email: input.email || null,
           contactName: input.contactName || null,
@@ -310,27 +391,27 @@ export const appRouter = router({
           }
         });
 
-        await db.updateCustomer(id, cleanUpdates);
+        await dbHelpers.updateCustomer(id, cleanUpdates);
         return { success: true };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deleteCustomer(input.id);
+        await dbHelpers.deleteCustomer(input.id);
         return { success: true };
       }),
   }),
 
   quotes: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllQuotes();
+      return await dbHelpers.getAllQuotes();
     }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return await db.getQuoteById(input.id);
+        return await dbHelpers.getQuoteById(input.id);
       }),
     
     create: protectedProcedure
@@ -340,10 +421,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         // Generate quote number
-        const allQuotes = await db.getAllQuotes();
+        const allQuotes = await dbHelpers.getAllQuotes();
         const quoteNumber = `Q${String(allQuotes.length + 1).padStart(5, '0')}`;
         
-        return await db.createQuote({
+        return await dbHelpers.createQuote({
           customerId: input.customerId,
           quoteNumber,
           notes: input.notes || null,
@@ -367,21 +448,21 @@ export const appRouter = router({
           }
         });
 
-        await db.updateQuote(id, cleanUpdates);
+        await dbHelpers.updateQuote(id, cleanUpdates);
         return { success: true };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deleteQuote(input.id);
+        await dbHelpers.deleteQuote(input.id);
         return { success: true };
       }),
     
     recalculateTotals: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        const items = await db.getQuoteItems(input.id);
+        const items = await dbHelpers.getQuoteItems(input.id);
         
         let totalAmount = 0;
         let totalMargin = 0;
@@ -393,7 +474,7 @@ export const appRouter = router({
         
         const marginPercentage = totalAmount > 0 ? (totalMargin / totalAmount) * 100 : 0;
         
-        await db.updateQuote(input.id, {
+        await dbHelpers.updateQuote(input.id, {
           totalAmount: totalAmount.toFixed(2),
           totalMargin: totalMargin.toFixed(2),
           marginPercentage: marginPercentage.toFixed(2),
@@ -414,7 +495,7 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ quoteId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getQuoteItems(input.quoteId);
+        return await dbHelpers.getQuoteItems(input.quoteId);
       }),
     
     create: protectedProcedure
@@ -430,7 +511,7 @@ export const appRouter = router({
         const lineTotal = input.sellPrice * input.quantity;
         const margin = (input.sellPrice - input.buyPrice) * input.quantity;
         
-        const item = await db.createQuoteItem({
+        const item = await dbHelpers.createQuoteItem({
           quoteId: input.quoteId,
           pricelistItemId: input.pricelistItemId || null,
           itemName: input.itemName,
@@ -454,7 +535,7 @@ export const appRouter = router({
         const { id, ...updates } = input;
         
         // Get current item to recalculate
-        const items = await db.getQuoteItems(0);
+        const items = await dbHelpers.getQuoteItems(0);
         const currentItem = items.find(i => i.id === id);
         
         if (currentItem) {
@@ -465,7 +546,7 @@ export const appRouter = router({
           const lineTotal = sellPrice * quantity;
           const margin = (sellPrice - buyPrice) * quantity;
           
-          await db.updateQuoteItem(id, {
+          await dbHelpers.updateQuoteItem(id, {
             quantity: quantity.toFixed(2),
             sellPrice: sellPrice.toFixed(2),
             margin: margin.toFixed(2),
@@ -479,20 +560,20 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deleteQuoteItem(input.id);
+        await dbHelpers.deleteQuoteItem(input.id);
         return { success: true };
       }),
   }),
 
   purchaseOrders: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllPurchaseOrders();
+      return await dbHelpers.getAllPurchaseOrders();
     }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return await db.getPurchaseOrderById(input.id);
+        return await dbHelpers.getPurchaseOrderById(input.id);
       }),
     
     create: protectedProcedure
@@ -502,10 +583,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         // Generate PO number
-        const allPOs = await db.getAllPurchaseOrders();
+        const allPOs = await dbHelpers.getAllPurchaseOrders();
         const poNumber = `PO${String(allPOs.length + 1).padStart(5, '0')}`;
         
-        return await db.createPurchaseOrder({
+        return await dbHelpers.createPurchaseOrder({
           supplierId: input.supplierId,
           poNumber,
           notes: input.notes || null,
@@ -529,21 +610,21 @@ export const appRouter = router({
           }
         });
 
-        await db.updatePurchaseOrder(id, cleanUpdates);
+        await dbHelpers.updatePurchaseOrder(id, cleanUpdates);
         return { success: true };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deletePurchaseOrder(input.id);
+        await dbHelpers.deletePurchaseOrder(input.id);
         return { success: true };
       }),
     
     recalculateTotals: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        const items = await db.getPurchaseOrderItems(input.id);
+        const items = await dbHelpers.getPurchaseOrderItems(input.id);
         
         let totalAmount = 0;
         
@@ -551,7 +632,7 @@ export const appRouter = router({
           totalAmount += parseFloat(item.lineTotal);
         });
         
-        await db.updatePurchaseOrder(input.id, {
+        await dbHelpers.updatePurchaseOrder(input.id, {
           totalAmount: totalAmount.toFixed(2),
         });
         
@@ -577,7 +658,7 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ purchaseOrderId: z.number() }))
       .query(async ({ input }) => {
-        return await db.getPurchaseOrderItems(input.purchaseOrderId);
+        return await dbHelpers.getPurchaseOrderItems(input.purchaseOrderId);
       }),
     
     create: protectedProcedure
@@ -591,7 +672,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const lineTotal = input.buyPrice * input.quantity;
         
-        const item = await db.createPurchaseOrderItem({
+        const item = await dbHelpers.createPurchaseOrderItem({
           purchaseOrderId: input.purchaseOrderId,
           pricelistItemId: input.pricelistItemId || null,
           itemName: input.itemName,
@@ -613,7 +694,7 @@ export const appRouter = router({
         const { id, ...updates } = input;
         
         // Get current item to recalculate
-        const items = await db.getPurchaseOrderItems(0);
+        const items = await dbHelpers.getPurchaseOrderItems(0);
         const currentItem = items.find(i => i.id === id);
         
         if (currentItem) {
@@ -622,7 +703,7 @@ export const appRouter = router({
           
           const lineTotal = buyPrice * quantity;
           
-          await db.updatePurchaseOrderItem(id, {
+          await dbHelpers.updatePurchaseOrderItem(id, {
             quantity: quantity.toFixed(2),
             buyPrice: buyPrice.toFixed(2),
             lineTotal: lineTotal.toFixed(2),
@@ -635,20 +716,20 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deletePurchaseOrderItem(input.id);
+        await dbHelpers.deletePurchaseOrderItem(input.id);
         return { success: true };
       }),
   }),
 
   suppliers: router({
     list: protectedProcedure.query(async () => {
-      return await db.getAllSuppliers();
+      return await dbHelpers.getAllSuppliers();
     }),
     
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return await db.getSupplierById(input.id);
+        return await dbHelpers.getSupplierById(input.id);
       }),
     
     create: protectedProcedure
@@ -661,7 +742,7 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        return await db.createSupplier({
+        return await dbHelpers.createSupplier({
           ...input,
           billingAddress: input.billingAddress || null,
           keyContactName: input.keyContactName || null,
@@ -690,14 +771,14 @@ export const appRouter = router({
           }
         });
 
-        await db.updateSupplier(id, cleanUpdates);
+        await dbHelpers.updateSupplier(id, cleanUpdates);
         return { success: true };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deleteSupplier(input.id);
+        await dbHelpers.deleteSupplier(input.id);
         return { success: true };
       }),
   }),

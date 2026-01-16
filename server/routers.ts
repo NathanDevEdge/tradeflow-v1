@@ -509,7 +509,7 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
-        status: z.enum(["draft", "sent", "accepted", "rejected"]).optional(),
+        status: z.enum(["draft", "sent", "accepted", "declined"]).optional(),
         notes: z.string().optional(),
         pdfUrl: z.string().optional(),
       }))

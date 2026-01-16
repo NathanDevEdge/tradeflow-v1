@@ -18,6 +18,7 @@ import ContactInbox from "./pages/ContactInbox";
 import Pricelists from "./pages/Pricelists";
 import PricelistDetail from "./pages/PricelistDetail";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import Suppliers from "./pages/Suppliers";
 import Quotes from "./pages/Quotes";
 import QuoteDetail from "./pages/QuoteDetail";
@@ -77,6 +78,9 @@ function Router() {
       </Route>
       <Route path="/customers">
         {() => <ProtectedRoute component={Customers} />}
+      </Route>
+      <Route path="/customers/:id">
+        {(params) => <ProtectedRoute component={CustomerDetail} {...params} />}
       </Route>
       <Route path="/suppliers">
         {() => <ProtectedRoute component={Suppliers} />}

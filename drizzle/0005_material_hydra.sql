@@ -1,0 +1,1 @@
+ALTER TABLE `quotes` MODIFY COLUMN `status` enum('draft','sent','accepted','declined') NOT NULL DEFAULT 'draft';

@@ -145,7 +145,7 @@ export const quotes = mysqlTable("quotes", {
   id: int("id").autoincrement().primaryKey(),
   customerId: int("customerId").notNull(),
   quoteNumber: varchar("quoteNumber", { length: 50 }).notNull().unique(),
-  status: mysqlEnum("status", ["draft", "sent", "accepted", "rejected"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "sent", "accepted", "declined"]).default("draft").notNull(),
   totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull().default("0"),
   totalMargin: decimal("totalMargin", { precision: 10, scale: 2 }).notNull().default("0"),
   marginPercentage: decimal("marginPercentage", { precision: 5, scale: 2 }).notNull().default("0"),

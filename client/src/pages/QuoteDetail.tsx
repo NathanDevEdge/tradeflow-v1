@@ -78,6 +78,20 @@ export default function QuoteDetail() {
     },
   });
 
+  const updateStatusMutation = trpc.quotes.update.useMutation({
+    onSuccess: async () => {
+      await utils.quotes.get.invalidate({ id: quoteId });
+      toast.success("Quote status updated");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleStatusChange = (newStatus: string) => {
+    updateStatusMutation.mutate({ id: quoteId, status: newStatus as any });
+  };
+
   // Filter products based on search query and selected pricelist
   const filteredProducts = useMemo(() => {
     if (!allProducts) return [];
@@ -223,9 +237,44 @@ export default function QuoteDetail() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={quote.status === "draft" ? "secondary" : "default"}>
-              {quote.status}
+            {/* Status Workflow Buttons */}
+            {quote.status === "draft" && (
+              <Button 
+                onClick={() => handleStatusChange("sent")}
+                disabled={updateStatusMutation.isPending}
+                variant="outline"
+              >
+                Mark as Sent
+              </Button>
+            )}
+            {quote.status === "sent" && (
+              <>
+                <Button 
+                  onClick={() => handleStatusChange("accepted")}
+                  disabled={updateStatusMutation.isPending}
+                  variant="default"
+                >
+                  Accept Quote
+                </Button>
+                <Button 
+                  onClick={() => handleStatusChange("declined")}
+                  disabled={updateStatusMutation.isPending}
+                  variant="destructive"
+                >
+                  Decline Quote
+                </Button>
+              </>
+            )}
+            
+            <Badge variant={
+              quote.status === "draft" ? "secondary" :
+              quote.status === "sent" ? "default" :
+              quote.status === "accepted" ? "default" :
+              "destructive"
+            }>
+              {quote.status.toUpperCase()}
             </Badge>
+            
             <Button onClick={handleGeneratePDF} disabled={generatePDFMutation.isPending}>
               <FileDown className="mr-2 h-4 w-4" />
               {generatePDFMutation.isPending ? "Generating..." : "Export PDF"}

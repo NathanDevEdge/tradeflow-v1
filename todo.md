@@ -157,3 +157,22 @@
 - [x] Fix totals section: Subtotal, Total Margin (with %), GST (10%), Total
 - [x] Update table columns: Item, SKU, Quantity, Unit Price, Margin/Unit, Margin %, Total
 - [x] Add delete button for each line item
+
+## Delete Functionality
+- [x] Add trash icon to quotes list for deleting quotes
+- [x] Add confirmation dialog before deleting
+- [x] Clean up all test data (customers, pricelists, quotes)
+
+## Interactive Customer Detail Pages
+- [x] Create customer detail page component
+- [x] Display all customer contact information
+- [x] Show list of quotes associated with customer
+- [x] Make quotes clickable to view details
+- [x] Add "Create New Quote" button on customer detail page
+
+## Quote Status Workflow
+- [x] Update quote schema to include status field (draft, sent, accepted, declined)
+- [x] Add status badges to quotes list
+- [x] Create status transition UI (Draft → Sent → Accepted/Declined)
+- [ ] Add date tracking for status changes
+- [ ] Update quote detail view to show status history

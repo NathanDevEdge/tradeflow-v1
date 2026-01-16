@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { trpc } from "@/lib/trpc";
-import { Plus, FileText, Eye, Search } from "lucide-react";
+import { Plus, FileText, Eye, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -19,6 +19,8 @@ export default function Quotes() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [quoteToDelete, setQuoteToDelete] = useState<number | null>(null);
   const [, setLocation] = useLocation();
   
   const { data: quotes, isLoading } = trpc.quotes.list.useQuery();
@@ -38,6 +40,24 @@ export default function Quotes() {
       toast.error(error.message);
     },
   });
+
+  const deleteMutation = trpc.quotes.delete.useMutation({
+    onSuccess: () => {
+      utils.quotes.list.invalidate();
+      setDeleteDialogOpen(false);
+      setQuoteToDelete(null);
+      toast.success("Quote deleted successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleDelete = () => {
+    if (quoteToDelete) {
+      deleteMutation.mutate({ id: quoteToDelete });
+    }
+  };
 
   const resetForm = () => {
     setSelectedCustomerId("");
@@ -65,7 +85,7 @@ export default function Quotes() {
       case "draft": return "secondary";
       case "sent": return "default";
       case "accepted": return "default";
-      case "rejected": return "destructive";
+      case "declined": return "destructive";
       default: return "secondary";
     }
   };
@@ -203,17 +223,30 @@ export default function Quotes() {
                         {new Date(quote.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLocation(`/quotes/${quote.id}`);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/quotes/${quote.id}`);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuoteToDelete(quote.id);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -239,6 +272,30 @@ export default function Quotes() {
           </Card>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Quote</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this quote? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

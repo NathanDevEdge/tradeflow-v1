@@ -9,11 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { trpc } from "@/lib/trpc";
 import { Plus, Edit, Trash2, Users } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function Customers() {
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     companyName: "",
     contactName: "",
@@ -216,7 +218,11 @@ export default function Customers() {
                 </TableHeader>
                 <TableBody>
                   {customers.map((customer) => (
-                    <TableRow key={customer.id}>
+                    <TableRow 
+                      key={customer.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setLocation(`/customers/${customer.id}`)}
+                    >
                       <TableCell className="font-medium">{customer.companyName}</TableCell>
                       <TableCell>{customer.contactName || "-"}</TableCell>
                       <TableCell>{customer.email || "-"}</TableCell>
@@ -226,7 +232,10 @@ export default function Customers() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleEdit(customer)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(customer);
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -234,7 +243,10 @@ export default function Customers() {
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => handleDelete(customer.id, customer.companyName)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(customer.id, customer.companyName);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

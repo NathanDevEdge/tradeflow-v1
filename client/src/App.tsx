@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AdminLogin from "./pages/AdminLogin";
 import Pricelists from "./pages/Pricelists";
 import PricelistDetail from "./pages/PricelistDetail";
 import Customers from "./pages/Customers";
@@ -46,6 +47,9 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
+      
+      {/* Hidden admin OAuth route with pin */}
+      <Route path="/admin/login/9967" component={AdminLogin} />
       
       {/* Protected routes */}
       <Route path="/">

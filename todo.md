@@ -60,3 +60,7 @@
 - [x] Update session management for custom auth
 - [x] Test authentication flows
 - [x] Update context to support custom auth tokens
+
+## Hidden Admin Access
+- [x] Create /admin/login/9967 route that redirects to OAuth
+- [x] Test admin route accessibility

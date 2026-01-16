@@ -79,3 +79,8 @@
 - [x] Check and fix admin role assignment for OAuth users
 - [x] Ensure owner's OAuth account gets admin role automatically
 - [x] Test admin panel access after fix
+
+## Logout Redirect Fix
+- [x] Fix logout to properly clear all session cookies
+- [x] Ensure protected routes redirect to /login when not authenticated
+- [x] Test logout flow to verify redirect to login page

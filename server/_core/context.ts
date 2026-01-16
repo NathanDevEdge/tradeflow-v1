@@ -60,7 +60,28 @@ export async function createContext(
   // Fall back to OAuth if custom auth fails
   if (!user) {
     try {
-      user = await sdk.authenticateRequest(opts.req);
+      const oauthUser = await sdk.authenticateRequest(opts.req);
+      
+      if (oauthUser && oauthUser.openId) {
+        // Fetch full user record from database to get role and other fields
+        const db = await getDb();
+        if (db) {
+          const result = await db
+            .select()
+            .from(users)
+            .where(eq(users.openId, oauthUser.openId as string))
+            .limit(1);
+          
+          if (result.length > 0) {
+            user = result[0];
+          } else {
+            // OAuth user exists but not in our database yet
+            user = oauthUser;
+          }
+        } else {
+          user = oauthUser;
+        }
+      }
     } catch (error) {
       // Authentication is optional for public procedures.
       user = null;

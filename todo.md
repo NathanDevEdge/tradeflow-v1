@@ -74,3 +74,8 @@
 - [x] Create subscription management (extend, cancel, change type)
 - [x] Add demo account (demo@devedge.com.au / demo123!) with indefinite subscription
 - [x] Test admin panel functionality
+
+## Admin Role Fix
+- [x] Check and fix admin role assignment for OAuth users
+- [x] Ensure owner's OAuth account gets admin role automatically
+- [x] Test admin panel access after fix

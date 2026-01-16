@@ -84,3 +84,14 @@
 - [x] Fix logout to properly clear all session cookies
 - [x] Ensure protected routes redirect to /login when not authenticated
 - [x] Test logout flow to verify redirect to login page
+
+## Landing Page (TradeFlow Branding)
+- [x] Create professional landing page component
+- [x] Add hero section with value proposition
+- [x] Add features section highlighting key capabilities
+- [x] Add pricing section ($40/month, $399/year)
+- [x] Add FAQ section
+- [x] Add footer with login CTA
+- [x] Update routing to show landing page at / (root)
+- [x] Move dashboard to /dashboard route
+- [x] Update navigation and redirects

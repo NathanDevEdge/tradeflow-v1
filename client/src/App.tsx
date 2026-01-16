@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import DashboardLayout from "./components/DashboardLayout";
 import Home from "./pages/Home";
+import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -52,8 +53,13 @@ function Router() {
       {/* Hidden admin OAuth route with pin */}
       <Route path="/admin/login/9967" component={AdminLogin} />
       
-      {/* Protected routes */}
+      {/* Public landing page */}
       <Route path="/">
+        {() => <LandingPage />}
+      </Route>
+      
+      {/* Protected routes */}
+      <Route path="/dashboard">
         {() => <ProtectedRoute component={Home} />}
       </Route>
       <Route path="/admin/panel">

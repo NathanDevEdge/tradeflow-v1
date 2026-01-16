@@ -17,7 +17,7 @@ export default function Login() {
   const loginMutation = trpc.customAuth.login.useMutation({
     onSuccess: () => {
       toast.success("Login successful");
-      window.location.href = "/"; // Full reload to refresh auth state
+      window.location.href = "/dashboard"; // Full reload to refresh auth state
     },
     onError: (error) => {
       toast.error(error.message);

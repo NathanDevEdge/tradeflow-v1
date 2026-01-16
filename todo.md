@@ -135,3 +135,15 @@
 - [x] Handle flexible column naming variations (spaces, capitalization)
 - [x] Allow optional fields to be empty without validation errors
 - [x] Test with user's actual CSV file
+
+## Quote System UX Improvements
+- [x] Separate Quotes and Purchase Orders in navigation menu
+- [x] Replace all dropdowns with searchable input fields
+- [x] Add module-specific search bars (customers, suppliers, pricelists, quotes, POs)
+- [ ] Add global search bar in navigation header
+- [x] Make quote list items clickable to view details
+- [ ] Make customer list items clickable to view details
+- [x] Redesign quote creation workflow to redirect to quote builder page
+- [x] Add real-time product search in quote builder
+- [x] Show real-time margin calculations when adding products
+- [ ] Show unit sell price, buy price, and margin percentage for each product

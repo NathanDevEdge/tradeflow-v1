@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Building2, ShoppingCart, Shield, Mail } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Building2, ShoppingCart, Shield, Mail, FileCheck, Search } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -32,7 +32,8 @@ const menuItems = [
   { icon: FileText, label: "Pricelists", path: "/pricelists", adminOnly: false },
   { icon: Users, label: "Customers", path: "/customers", adminOnly: false },
   { icon: Building2, label: "Suppliers", path: "/suppliers", adminOnly: false },
-  { icon: ShoppingCart, label: "Quotes & POs", path: "/quotes", adminOnly: false },
+  { icon: ShoppingCart, label: "Quotes", path: "/quotes", adminOnly: false },
+  { icon: FileCheck, label: "Purchase Orders", path: "/purchase-orders", adminOnly: false },
   { icon: Shield, label: "Admin Panel", path: "/admin/panel", adminOnly: true },
   { icon: Mail, label: "Contact Inbox", path: "/admin/contacts", adminOnly: true },
 ];

@@ -167,6 +167,12 @@ export async function getPricelistItems(pricelistId: number): Promise<PricelistI
   return db.select().from(pricelistItems).where(eq(pricelistItems.pricelistId, pricelistId));
 }
 
+export async function getAllPricelistItems(): Promise<PricelistItem[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pricelistItems);
+}
+
 export async function getPricelistItemById(id: number): Promise<PricelistItem | undefined> {
   const db = await getDb();
   if (!db) return undefined;

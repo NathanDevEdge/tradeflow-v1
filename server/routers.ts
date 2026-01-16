@@ -271,6 +271,11 @@ export const appRouter = router({
         return await dbHelpers.getPricelistItems(input.pricelistId);
       }),
     
+    listAll: protectedProcedure
+      .query(async () => {
+        return await dbHelpers.getAllPricelistItems();
+      }),
+    
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {

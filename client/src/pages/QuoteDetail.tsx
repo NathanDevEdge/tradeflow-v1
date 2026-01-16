@@ -1,324 +1,316 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Plus, Trash2, FileDown } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 
 export default function QuoteDetail() {
-  const { id } = useParams<{ id: string }>();
-  const quoteId = parseInt(id || "0");
-  const [addItemOpen, setAddItemOpen] = useState(false);
-  const [selectedPricelistId, setSelectedPricelistId] = useState<string>("");
-  const [selectedItemId, setSelectedItemId] = useState<string>("");
-  const [quantity, setQuantity] = useState("1");
-  const [customSellPrice, setCustomSellPrice] = useState("");
-  
-  const { data: quote } = trpc.quotes.get.useQuery({ id: quoteId });
-  const { data: items, isLoading } = trpc.quoteItems.list.useQuery({ quoteId });
+  const [, params] = useRoute("/quotes/:id");
+  const [, setLocation] = useLocation();
+  const quoteId = params?.id ? parseInt(params.id) : 0;
+
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [quantity, setQuantity] = useState<string>("1");
+
+  const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
   const { data: customer } = trpc.customers.get.useQuery(
     { id: quote?.customerId || 0 },
-    { enabled: !!quote }
+    { enabled: !!quote?.customerId }
   );
-  const { data: pricelists } = trpc.pricelists.list.useQuery();
-  const { data: pricelistItems } = trpc.pricelistItems.list.useQuery(
-    { pricelistId: parseInt(selectedPricelistId || "0") },
-    { enabled: !!selectedPricelistId }
-  );
-  
+  const { data: allProducts } = trpc.pricelistItems.listAll.useQuery();
   const utils = trpc.useUtils();
-  
-  const createItemMutation = trpc.quoteItems.create.useMutation({
+
+  const addItemMutation = trpc.quoteItems.create.useMutation({
     onSuccess: async () => {
-      await utils.quoteItems.list.invalidate({ quoteId });
-      await recalculateMutation.mutateAsync({ id: quoteId });
       await utils.quotes.get.invalidate({ id: quoteId });
-      setAddItemOpen(false);
-      resetForm();
-      toast.success("Item added successfully");
+      setSelectedProductId("");
+      setQuantity("1");
+      toast.success("Item added to quote");
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
-  
+
   const deleteItemMutation = trpc.quoteItems.delete.useMutation({
     onSuccess: async () => {
-      await utils.quoteItems.list.invalidate({ quoteId });
-      await recalculateMutation.mutateAsync({ id: quoteId });
       await utils.quotes.get.invalidate({ id: quoteId });
-      toast.success("Item deleted successfully");
+      toast.success("Item removed from quote");
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
-  
-  const recalculateMutation = trpc.quotes.recalculateTotals.useMutation();
-  
+
   const generatePDFMutation = trpc.quotes.generatePDF.useMutation({
     onSuccess: (data) => {
-      window.open(data.url, "_blank");
-      toast.success("PDF generated successfully");
+      if (data.url) {
+        window.open(data.url, "_blank");
+        toast.success("PDF generated successfully");
+      }
     },
     onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const resetForm = () => {
-    setSelectedPricelistId("");
-    setSelectedItemId("");
-    setQuantity("1");
-    setCustomSellPrice("");
-  };
-
   const handleAddItem = () => {
-    if (!selectedItemId) {
-      toast.error("Please select an item");
+    if (!selectedProductId) {
+      toast.error("Please select a product");
       return;
     }
-    
-    const item = pricelistItems?.find(i => i.id === parseInt(selectedItemId));
-    if (!item) return;
-    
+    if (!quantity || parseFloat(quantity) <= 0) {
+      toast.error("Please enter a valid quantity");
+      return;
+    }
+
+    const product = allProducts?.find(p => p.id === parseInt(selectedProductId));
+    if (!product) {
+      toast.error("Product not found");
+      return;
+    }
+
+    const sellPrice = parseFloat(product.sellPrice || product.rrpExGst || "0");
+    const buyPrice = parseFloat(product.looseBuyPrice || "0");
     const qty = parseFloat(quantity);
-    const sellPrice = customSellPrice ? parseFloat(customSellPrice) : parseFloat(item.sellPrice);
-    const buyPrice = parseFloat(item.looseBuyPrice);
-    
-    createItemMutation.mutate({
+    const lineTotal = sellPrice * qty;
+    const margin = lineTotal - (buyPrice * qty);
+
+    addItemMutation.mutate({
       quoteId,
-      pricelistItemId: item.id,
-      itemName: item.itemName,
+      pricelistItemId: product.id,
+      itemName: product.itemName,
       quantity: qty,
       sellPrice,
       buyPrice,
     });
   };
 
-  const handleDeleteItem = (itemId: number, itemName: string) => {
-    if (confirm(`Are you sure you want to delete "${itemName}"?`)) {
+  const handleDeleteItem = (itemId: number) => {
+    if (confirm("Are you sure you want to remove this item?")) {
       deleteItemMutation.mutate({ id: itemId });
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "draft": return "secondary";
-      case "sent": return "default";
-      case "accepted": return "default";
-      case "rejected": return "destructive";
-      default: return "secondary";
-    }
+  const handleGeneratePDF = () => {
+    generatePDFMutation.mutate({ id: quoteId });
   };
+
+  const productOptions = allProducts?.map((product: any) => ({
+    value: product.id.toString(),
+    label: `${product.itemName} ${product.skuCode ? `(${product.skuCode})` : ""} - $${parseFloat(product.sellPrice || product.rrpExGst || "0").toFixed(2)}`,
+  })) || [];
+
+  // Calculate selected product details for preview
+  const selectedProduct = selectedProductId ? allProducts?.find((p: any) => p.id === parseInt(selectedProductId)) : null;
+  const previewSellPrice = selectedProduct ? parseFloat(selectedProduct.sellPrice || selectedProduct.rrpExGst || "0") : 0;
+  const previewBuyPrice = selectedProduct ? parseFloat(selectedProduct.looseBuyPrice || "0") : 0;
+  const previewQuantity = parseFloat(quantity) || 0;
+  const previewLineTotal = previewSellPrice * previewQuantity;
+  const previewMargin = previewLineTotal - (previewBuyPrice * previewQuantity);
+  const previewMarginPercent = previewLineTotal > 0 ? (previewMargin / previewLineTotal) * 100 : 0;
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!quote) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold mb-4">Quote not found</h2>
+          <Button onClick={() => setLocation("/quotes")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Quotes
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link href="/quotes">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/quotes")}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <div>
-              <div className="flex items-center space-x-3">
-                <h1 className="text-3xl font-bold tracking-tight">{quote?.quoteNumber}</h1>
-                {quote && (
-                  <Badge variant={getStatusColor(quote.status)}>
-                    {quote.status}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground mt-2">
+              <h1 className="text-3xl font-bold tracking-tight">{quote.quoteNumber}</h1>
+              <p className="text-muted-foreground mt-1">
                 Customer: {customer?.companyName || "Loading..."}
               </p>
             </div>
           </div>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => generatePDFMutation.mutate({ id: quoteId })}
-              disabled={generatePDFMutation.isPending || !items || items.length === 0}
-            >
+          <div className="flex items-center gap-2">
+            <Badge variant={quote.status === "draft" ? "secondary" : "default"}>
+              {quote.status}
+            </Badge>
+            <Button onClick={handleGeneratePDF} disabled={generatePDFMutation.isPending}>
               <FileDown className="mr-2 h-4 w-4" />
               {generatePDFMutation.isPending ? "Generating..." : "Export PDF"}
             </Button>
-            <Dialog open={addItemOpen} onOpenChange={(isOpen) => { setAddItemOpen(isOpen); if (!isOpen) resetForm(); }}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Item
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Item to Quote</DialogTitle>
-                  <DialogDescription>
-                    Select an item from your pricelists
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pricelist">Pricelist *</Label>
-                    <Select value={selectedPricelistId} onValueChange={(value) => {
-                      setSelectedPricelistId(value);
-                      setSelectedItemId("");
-                    }}>
-                      <SelectTrigger id="pricelist">
-                        <SelectValue placeholder="Select a pricelist" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pricelists?.map((pricelist) => (
-                          <SelectItem key={pricelist.id} value={String(pricelist.id)}>
-                            {pricelist.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+          </div>
+        </div>
+
+        {/* Quote Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${parseFloat(quote.totalAmount || "0").toFixed(2)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Margin</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                ${parseFloat(quote.totalMargin || "0").toFixed(2)}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Margin %</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{quote.marginPercentage || "0"}%</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Add Product Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Product to Quote</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="product">Search Product *</Label>
+                <SearchableSelect
+                  options={productOptions}
+                  value={selectedProductId}
+                  onValueChange={setSelectedProductId}
+                  placeholder="Search for a product..."
+                  searchPlaceholder="Search by name or SKU..."
+                  emptyText="No products found."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="Enter quantity"
+                />
+              </div>
+            </div>
+
+            {/* Preview Section */}
+            {selectedProduct && (
+              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold text-sm">Preview</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Sell Price</p>
+                    <p className="font-medium">${previewSellPrice.toFixed(2)}</p>
                   </div>
-                  {selectedPricelistId && (
-                    <div className="space-y-2">
-                      <Label htmlFor="item">Item *</Label>
-                      <Select value={selectedItemId} onValueChange={setSelectedItemId}>
-                        <SelectTrigger id="item">
-                          <SelectValue placeholder="Select an item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {pricelistItems?.map((item) => (
-                            <SelectItem key={item.id} value={String(item.id)}>
-                              {item.itemName} - ${parseFloat(item.sellPrice).toFixed(2)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="quantity">Quantity *</Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        step="0.01"
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="customSellPrice">Custom Sell Price</Label>
-                      <Input
-                        id="customSellPrice"
-                        type="number"
-                        step="0.01"
-                        placeholder="Leave blank for default"
-                        value={customSellPrice}
-                        onChange={(e) => setCustomSellPrice(e.target.value)}
-                      />
-                    </div>
+                  <div>
+                    <p className="text-muted-foreground">Buy Price</p>
+                    <p className="font-medium">${previewBuyPrice.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Line Total</p>
+                    <p className="font-medium">${previewLineTotal.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Margin</p>
+                    <p className="font-medium text-green-600">${previewMargin.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Margin %</p>
+                    <p className="font-medium text-green-600">{previewMarginPercent.toFixed(2)}%</p>
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => { setAddItemOpen(false); resetForm(); }}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddItem} disabled={createItemMutation.isPending}>
-                    {createItemMutation.isPending ? "Adding..." : "Add Item"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+              </div>
+            )}
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${parseFloat(quote?.totalAmount || "0").toFixed(2)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Margin</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">${parseFloat(quote?.totalMargin || "0").toFixed(2)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Margin %</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{parseFloat(quote?.marginPercentage || "0").toFixed(1)}%</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Items</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{items?.length || 0}</div>
-            </CardContent>
-          </Card>
-        </div>
+            <Button onClick={handleAddItem} disabled={addItemMutation.isPending}>
+              <Plus className="mr-2 h-4 w-4" />
+              {addItemMutation.isPending ? "Adding..." : "Add to Quote"}
+            </Button>
+          </CardContent>
+        </Card>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading items...</p>
-          </div>
-        ) : items && items.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Quote Items</CardTitle>
-              <CardDescription>Internal view with margin calculations</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
+        {/* Quote Items Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quote Items</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {quote.items && quote.items.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item Name</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Buy Price</TableHead>
                     <TableHead className="text-right">Sell Price</TableHead>
-                    <TableHead className="text-right">Margin/Unit</TableHead>
+                    <TableHead className="text-right">Buy Price</TableHead>
                     <TableHead className="text-right">Line Total</TableHead>
-                    <TableHead className="text-right">Line Margin</TableHead>
+                    <TableHead className="text-right">Margin</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item) => {
-                    const marginPerUnit = parseFloat(item.sellPrice) - parseFloat(item.buyPrice);
+                  {quote.items.map((item) => {
+                    const itemMarginPercent = parseFloat(item.lineTotal) > 0
+                      ? (parseFloat(item.margin) / parseFloat(item.lineTotal)) * 100
+                      : 0;
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.itemName}</TableCell>
-                        <TableCell className="text-right">{parseFloat(item.quantity).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${parseFloat(item.buyPrice).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">${parseFloat(item.sellPrice).toFixed(2)}</TableCell>
-                        <TableCell className="text-right text-green-600">${marginPerUnit.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-medium">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
-                        <TableCell className="text-right text-green-600 font-medium">${parseFloat(item.margin).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${parseFloat(item.buyPrice).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-green-600 font-medium">
+                            ${parseFloat(item.margin).toFixed(2)} ({itemMarginPercent.toFixed(2)}%)
+                          </span>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() => handleDeleteItem(item.id, item.itemName)}
+                            size="sm"
+                            onClick={() => handleDeleteItem(item.id)}
+                            disabled={deleteItemMutation.isPending}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -326,23 +318,13 @@ export default function QuoteDetail() {
                   })}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Plus className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No items yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Add items from your pricelists to this quote
-              </p>
-              <Button onClick={() => setAddItemOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Item
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="p-12 text-center">
+                <p className="text-muted-foreground">No items added to this quote yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

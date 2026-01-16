@@ -95,3 +95,6 @@
 - [x] Update routing to show landing page at / (root)
 - [x] Move dashboard to /dashboard route
 - [x] Update navigation and redirects
+
+## Landing Page Updates
+- [x] Remove demo credentials from hero section

@@ -42,9 +42,7 @@ export default function LandingPage() {
               View Pricing
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Try the demo: <span className="font-mono bg-slate-100 px-2 py-1 rounded">demo@devedge.com.au</span> / <span className="font-mono bg-slate-100 px-2 py-1 rounded">demo123!</span>
-          </p>
+
         </div>
       </section>
 

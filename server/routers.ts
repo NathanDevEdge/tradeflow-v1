@@ -1084,6 +1084,60 @@ export const appRouter = router({
       }),
   }),
 
+  companySettings: router({
+    get: protectedProcedure.query(async () => {
+      return await dbHelpers.getCompanySettings();
+    }),
+    
+    upsert: protectedProcedure
+      .input(z.object({
+        companyName: z.string().optional(),
+        abn: z.string().optional(),
+        address: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().email().optional().or(z.literal("")),
+        logoUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const cleanInput: Record<string, string | null> = {};
+        
+        Object.entries(input).forEach(([key, value]) => {
+          if (value !== undefined) {
+            cleanInput[key] = value || null;
+          }
+        });
+        
+        return await dbHelpers.upsertCompanySettings(cleanInput);
+      }),
+    
+    uploadLogo: protectedProcedure
+      .input(z.object({
+        fileData: z.string(), // base64 encoded file
+        fileName: z.string(),
+        mimeType: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { storagePut } = await import("./storage");
+        
+        // Decode base64 to buffer
+        const buffer = Buffer.from(input.fileData, "base64");
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const fileExtension = input.fileName.split(".").pop();
+        const fileKey = `company-logos/logo-${timestamp}-${randomSuffix}.${fileExtension}`;
+        
+        // Upload to S3
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        
+        // Update company settings with new logo URL
+        await dbHelpers.upsertCompanySettings({ logoUrl: url });
+        
+        return { url };
+      }),
+  }),
+
   contact: router({
     list: adminProcedure.query(async () => {
       const db = await getDb();

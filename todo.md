@@ -214,3 +214,29 @@
 - [x] Fix total calculation (209 boards showing $218.30 instead of correct total)
 - [x] Ensure buy price changes are saved to database
 - [x] Display updated buy price in UI immediately
+
+## Settings Page & Company Details
+- [x] Create company_settings table in database
+- [x] Add fields for company name, ABN/ACN, address, phone, email, logo URL
+- [x] Create backend procedures for getting/updating company settings
+- [x] Create Settings page component
+- [x] Add company details form with validation
+- [x] Implement logo upload to S3
+- [x] Add Settings link to navigation
+
+## Premium PDF Design
+- [x] Redesign quote PDF with professional layout
+- [x] Redesign purchase order PDF with professional layout
+- [x] Add company logo to PDF header
+- [x] Use clean typography and proper spacing
+- [x] Create branded header/footer sections
+- [x] Design well-organized line items table
+- [x] Ensure high-end aesthetic (not spreadsheet-like)
+
+## Clickable Table Rows UX
+- [x] Make entire customer rows clickable
+- [x] Make entire supplier rows clickable
+- [x] Make entire quote rows clickable
+- [x] Make entire purchase order rows clickable
+- [x] Keep action buttons for delete/other operations
+- [x] Add hover effects for better UX

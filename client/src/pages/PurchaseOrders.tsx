@@ -10,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Plus, ShoppingCart, Eye } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function PurchaseOrders() {
+  const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -148,7 +149,10 @@ export default function PurchaseOrders() {
                 </TableHeader>
                 <TableBody>
                   {purchaseOrders.map((po) => (
-                    <TableRow key={po.id}>
+                    <TableRow 
+                      key={po.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setLocation(`/purchase-orders/${po.id}`)}>
                       <TableCell className="font-medium">{po.poNumber}</TableCell>
                       <TableCell>{getSupplierName(po.supplierId)}</TableCell>
                       <TableCell>

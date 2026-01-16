@@ -418,3 +418,33 @@ export async function deletePurchaseOrderItem(id: number): Promise<void> {
   if (!db) throw new Error("Database not available");
   await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.id, id));
 }
+
+// Company Settings
+export async function getCompanySettings(): Promise<typeof companySettings.$inferSelect | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { companySettings } = await import("../drizzle/schema");
+  const settings = await db.select().from(companySettings).limit(1);
+  return settings[0] || null;
+}
+
+export async function upsertCompanySettings(settings: Partial<typeof companySettings.$inferInsert>): Promise<typeof companySettings.$inferSelect> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { companySettings } = await import("../drizzle/schema");
+  
+  const existing = await db.select().from(companySettings).limit(1);
+  
+  if (existing.length > 0) {
+    // Update existing
+    await db.update(companySettings).set(settings).where(eq(companySettings.id, existing[0].id));
+    const updated = await db.select().from(companySettings).where(eq(companySettings.id, existing[0].id)).limit(1);
+    return updated[0];
+  } else {
+    // Insert new
+    const result = await db.insert(companySettings).values(settings);
+    const insertedId = Number(result[0].insertId);
+    const created = await db.select().from(companySettings).where(eq(companySettings.id, insertedId)).limit(1);
+    return created[0];
+  }
+}

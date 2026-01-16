@@ -10,8 +10,10 @@ import { trpc } from "@/lib/trpc";
 import { Plus, Edit, Trash2, Building2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 export default function Suppliers() {
+  const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -222,7 +224,11 @@ export default function Suppliers() {
                 </TableHeader>
                 <TableBody>
                   {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
+                    <TableRow 
+                      key={supplier.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setLocation(`/suppliers/${supplier.id}`)}>
+                    
                       <TableCell className="font-medium">{supplier.companyName}</TableCell>
                       <TableCell>{supplier.keyContactName || "-"}</TableCell>
                       <TableCell>{supplier.poEmail}</TableCell>

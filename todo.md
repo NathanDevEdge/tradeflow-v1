@@ -105,3 +105,27 @@
 - [x] Add trust indicators (Australian-based, security, uptime)
 - [x] Implement backend contact form submission
 - [x] Store contact inquiries in database
+
+## Admin Contact Inbox
+- [x] Add contact inquiries list to admin panel
+- [x] Add status management (new, contacted, converted, archived)
+- [x] Add filtering and sorting options
+- [x] Create backend procedures for listing and updating inquiries
+
+## Landing Page Navigation
+- [x] Add smooth scroll navigation to Features, Pricing, Contact sections
+- [x] Update header with anchor links
+
+## Email Notifications
+- [x] Implement email notification when contact form is submitted
+- [x] Send notification to admin email address
+
+## Backend Functionality Testing
+- [ ] Test CSV pricelist upload with validation
+- [ ] Test pricelist item CRUD operations
+- [ ] Test customer and supplier CRUD operations
+- [ ] Test quote creation with margin calculations
+- [ ] Test quote PDF generation (verify no margin data exposed)
+- [ ] Test purchase order creation
+- [ ] Test purchase order PDF generation (verify only buy prices shown)
+- [ ] Test purchase order email functionality

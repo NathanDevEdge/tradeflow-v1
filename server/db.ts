@@ -282,11 +282,14 @@ export async function getAllQuotes(): Promise<Quote[]> {
   return db.select().from(quotes).orderBy(desc(quotes.createdAt));
 }
 
-export async function getQuoteById(id: number): Promise<Quote | undefined> {
+export async function getQuoteById(id: number): Promise<(Quote & { items: QuoteItem[] }) | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(quotes).where(eq(quotes.id, id)).limit(1);
-  return result[0];
+  const quoteResult = await db.select().from(quotes).where(eq(quotes.id, id)).limit(1);
+  if (!quoteResult[0]) return undefined;
+  
+  const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, id));
+  return { ...quoteResult[0], items };
 }
 
 export async function createQuote(quote: typeof quotes.$inferInsert): Promise<Quote> {
@@ -348,11 +351,14 @@ export async function getAllPurchaseOrders(): Promise<PurchaseOrder[]> {
   return db.select().from(purchaseOrders).orderBy(desc(purchaseOrders.createdAt));
 }
 
-export async function getPurchaseOrderById(id: number): Promise<PurchaseOrder | undefined> {
+export async function getPurchaseOrderById(id: number): Promise<(PurchaseOrder & { items: PurchaseOrderItem[] }) | undefined> {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).limit(1);
-  return result[0];
+  const poResult = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).limit(1);
+  if (!poResult[0]) return undefined;
+  
+  const items = await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
+  return { ...poResult[0], items };
 }
 
 export async function createPurchaseOrder(po: typeof purchaseOrders.$inferInsert): Promise<PurchaseOrder> {

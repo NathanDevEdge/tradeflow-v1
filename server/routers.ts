@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { contactInquiries } from "../drizzle/schema";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
+import { notifyOwner } from "./_core/notification";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as dbHelpers from "./db";
@@ -791,7 +792,36 @@ export const appRouter = router({
   }),
 
   contact: router({
-    submit: publicProcedure
+    list: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      return await db.select().from(contactInquiries).orderBy(contactInquiries.createdAt);
+    }),
+
+    updateStatus: adminProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          status: z.enum(["new", "contacted", "converted", "archived"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.update(contactInquiries).set({ status: input.status }).where(eq(contactInquiries.id, input.id));
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        await db.delete(contactInquiries).where(eq(contactInquiries.id, input.id));
+        return { success: true };
+      }),
+
+      submit: publicProcedure
       .input(
         z.object({
           name: z.string().min(1, "Name is required"),
@@ -803,7 +833,6 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new Error("Database not available");
-
         await db.insert(contactInquiries).values({
           name: input.name,
           email: input.email,
@@ -811,6 +840,17 @@ export const appRouter = router({
           message: input.message,
           status: "new",
         });
+
+        // Send email notification to admin
+        try {
+          await notifyOwner({
+            title: "New Contact Form Submission",
+            content: `Name: ${input.name}\nEmail: ${input.email}${input.company ? `\nCompany: ${input.company}` : ""}\n\nMessage:\n${input.message}`,
+          });
+        } catch (error) {
+          console.error("Failed to send email notification:", error);
+          // Don't fail the mutation if email fails
+        }
 
         return { success: true };
       }),

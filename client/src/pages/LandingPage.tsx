@@ -39,7 +39,36 @@ export default function LandingPage() {
             </div>
             <span className="text-xl font-bold">TradeFlow</span>
           </div>
-          <Button onClick={() => setLocation("/login")} variant="default">
+          <div className="hidden md:flex items-center gap-6">
+            <button
+              onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Features
+            </button>
+            <button
+              onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Compare
+            </button>
+            <button
+              onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </button>
+            <button
+              onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact
+            </button>
+            <Button onClick={() => setLocation("/login")} variant="default">
+              Log In
+            </Button>
+          </div>
+          <Button className="md:hidden" onClick={() => setLocation("/login")} variant="default">
             Log In
           </Button>
         </div>
@@ -69,7 +98,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 py-20 bg-slate-50">
+      <section id="features" className="container mx-auto px-4 py-20 bg-slate-50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Run Your Business</h2>
@@ -141,7 +170,7 @@ export default function LandingPage() {
       </section>
 
       {/* Comparison Table Section */}
-      <section className="container mx-auto px-4 py-20">
+      <section id="comparison" className="container mx-auto px-4 py-20">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose TradeFlow?</h2>

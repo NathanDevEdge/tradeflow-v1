@@ -21,18 +21,20 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Building2, ShoppingCart } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Building2, ShoppingCart, Shield, Mail } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: FileText, label: "Pricelists", path: "/pricelists" },
-  { icon: Users, label: "Customers", path: "/customers" },
-  { icon: Building2, label: "Suppliers", path: "/suppliers" },
-  { icon: ShoppingCart, label: "Quotes & POs", path: "/quotes" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", adminOnly: false },
+  { icon: FileText, label: "Pricelists", path: "/pricelists", adminOnly: false },
+  { icon: Users, label: "Customers", path: "/customers", adminOnly: false },
+  { icon: Building2, label: "Suppliers", path: "/suppliers", adminOnly: false },
+  { icon: ShoppingCart, label: "Quotes & POs", path: "/quotes", adminOnly: false },
+  { icon: Shield, label: "Admin Panel", path: "/admin/panel", adminOnly: true },
+  { icon: Mail, label: "Contact Inbox", path: "/admin/contacts", adminOnly: true },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -169,7 +171,7 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
+              {menuItems.filter(item => !item.adminOnly || user?.role === "admin").map(item => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>

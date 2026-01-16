@@ -14,6 +14,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPanel from "./pages/AdminPanel";
+import ContactInbox from "./pages/ContactInbox";
 import Pricelists from "./pages/Pricelists";
 import PricelistDetail from "./pages/PricelistDetail";
 import Customers from "./pages/Customers";
@@ -64,6 +65,9 @@ function Router() {
       </Route>
       <Route path="/admin/panel">
         {() => <ProtectedRoute component={AdminPanel} />}
+      </Route>
+      <Route path="/admin/contacts">
+        {() => <ProtectedRoute component={ContactInbox} />}
       </Route>
       <Route path="/pricelists">
         {() => <ProtectedRoute component={Pricelists} />}

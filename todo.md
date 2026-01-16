@@ -129,3 +129,9 @@
 - [ ] Test purchase order creation
 - [ ] Test purchase order PDF generation (verify only buy prices shown)
 - [ ] Test purchase order email functionality
+
+## CSV Upload Fix
+- [x] Update CSV validation to be case-insensitive for column names
+- [x] Handle flexible column naming variations (spaces, capitalization)
+- [x] Allow optional fields to be empty without validation errors
+- [x] Test with user's actual CSV file

@@ -15,6 +15,36 @@ import * as customAuth from "./customAuth";
 import * as admin from "./admin";
 import { SignJWT } from "jose";
 
+// CSV column name normalization - handles case-insensitive and flexible naming
+function normalizeColumnName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+function normalizeCSVRow(row: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  const columnMap: Record<string, string> = {
+    "item name": "Item Name",
+    "sku code": "SKU Code",
+    "pack size": "Pack Size",
+    "pack buy price": "Pack buy price ex gst",
+    "pack buy price ex gst": "Pack buy price ex gst",
+    "loose buy price": "Loose buy price ex gst",
+    "loose buy price ex gst": "Loose buy price ex gst",
+    "rrp ex gst": "RRP ex gst",
+    "rrp inc gst": "RRP inc gst",
+  };
+
+  Object.entries(row).forEach(([key, value]) => {
+    const normalizedKey = normalizeColumnName(key);
+    const mappedKey = columnMap[normalizedKey];
+    if (mappedKey) {
+      normalized[mappedKey] = value;
+    }
+  });
+
+  return normalized;
+}
+
 // CSV validation schema
 const csvRowSchema = z.object({
   "Item Name": z.string().min(1, "Item Name is required"),
@@ -258,7 +288,8 @@ export const appRouter = router({
 
         input.csvData.forEach((row, index) => {
           try {
-            const validated = csvRowSchema.parse(row);
+            const normalizedRow = normalizeCSVRow(row);
+            const validated = csvRowSchema.parse(normalizedRow);
             
             const looseBuyPrice = parseDecimal(validated["Loose buy price ex gst"]);
             const rrpExGst = parseDecimal(validated["RRP ex gst"]);

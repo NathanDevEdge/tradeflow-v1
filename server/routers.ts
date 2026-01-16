@@ -662,25 +662,49 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { id, ...updates } = input;
         
-        // Get current item to recalculate
-        const items = await dbHelpers.getQuoteItems(0);
-        const currentItem = items.find(i => i.id === id);
+        // First, get the item to find its quoteId
+        const db = await getDb();
+        if (!db) throw new Error("Database connection failed");
+        const { quoteItems } = await import("../drizzle/schema");
+        const allItems = await db.select().from(quoteItems).where(eq(quoteItems.id, id));
+        const currentItem = allItems[0];
         
-        if (currentItem) {
-          const quantity = updates.quantity ?? parseFloat(currentItem.quantity);
-          const sellPrice = updates.sellPrice ?? parseFloat(currentItem.sellPrice);
-          const buyPrice = parseFloat(currentItem.buyPrice);
-          
-          const lineTotal = sellPrice * quantity;
-          const margin = (sellPrice - buyPrice) * quantity;
-          
-          await dbHelpers.updateQuoteItem(id, {
-            quantity: quantity.toFixed(2),
-            sellPrice: sellPrice.toFixed(2),
-            margin: margin.toFixed(2),
-            lineTotal: lineTotal.toFixed(2),
-          });
+        if (!currentItem) {
+          throw new Error("Quote item not found");
         }
+        
+        const quantity = updates.quantity ?? parseFloat(currentItem.quantity);
+        const sellPrice = updates.sellPrice ?? parseFloat(currentItem.sellPrice);
+        const buyPrice = parseFloat(currentItem.buyPrice);
+        
+        const lineTotal = sellPrice * quantity;
+        const margin = (sellPrice - buyPrice) * quantity;
+        
+        // Update the item
+        await dbHelpers.updateQuoteItem(id, {
+          quantity: quantity.toFixed(2),
+          sellPrice: sellPrice.toFixed(2),
+          margin: margin.toFixed(2),
+          lineTotal: lineTotal.toFixed(2),
+        });
+        
+        // Recalculate quote totals
+        const items = await dbHelpers.getQuoteItems(currentItem.quoteId);
+        let totalAmount = 0;
+        let totalMargin = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+          totalMargin += parseFloat(item.margin);
+        });
+        
+        const marginPercentage = totalAmount > 0 ? (totalMargin / totalAmount) * 100 : 0;
+        
+        await dbHelpers.updateQuote(currentItem.quoteId, {
+          totalAmount: totalAmount.toFixed(2),
+          totalMargin: totalMargin.toFixed(2),
+          marginPercentage: marginPercentage.toFixed(2),
+        });
         
         return { success: true };
       }),
@@ -688,7 +712,38 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
+        // Get the item to find its quoteId before deleting
+        const db = await getDb();
+        if (!db) throw new Error("Database connection failed");
+        const { quoteItems } = await import("../drizzle/schema");
+        const allItems = await db.select().from(quoteItems).where(eq(quoteItems.id, input.id));
+        const currentItem = allItems[0];
+        
+        if (!currentItem) {
+          throw new Error("Quote item not found");
+        }
+        
+        // Delete the item
         await dbHelpers.deleteQuoteItem(input.id);
+        
+        // Recalculate quote totals
+        const items = await dbHelpers.getQuoteItems(currentItem.quoteId);
+        let totalAmount = 0;
+        let totalMargin = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+          totalMargin += parseFloat(item.margin);
+        });
+        
+        const marginPercentage = totalAmount > 0 ? (totalMargin / totalAmount) * 100 : 0;
+        
+        await dbHelpers.updateQuote(currentItem.quoteId, {
+          totalAmount: totalAmount.toFixed(2),
+          totalMargin: totalMargin.toFixed(2),
+          marginPercentage: marginPercentage.toFixed(2),
+        });
+        
         return { success: true };
       }),
   }),

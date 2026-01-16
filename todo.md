@@ -176,3 +176,11 @@
 - [x] Create status transition UI (Draft → Sent → Accepted/Declined)
 - [ ] Add date tracking for status changes
 - [ ] Update quote detail view to show status history
+
+## Quote Builder Bug Fixes
+- [x] Fix inline editing for quantity (not responding to changes)
+- [x] Fix inline editing for unit price (not responding to changes)
+- [x] Fix quote totals calculation when items are added
+- [x] Ensure totals display correctly in quotes list
+- [x] Ensure totals display correctly in customer detail page
+- [x] Trigger recalculation after adding/updating/deleting items

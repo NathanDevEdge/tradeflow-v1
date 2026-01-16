@@ -147,3 +147,13 @@
 - [x] Add real-time product search in quote builder
 - [x] Show real-time margin calculations when adding products
 - [ ] Show unit sell price, buy price, and margin percentage for each product
+
+## Quote Builder Redesign
+- [x] Replace searchable select with simple text search bar
+- [x] Add pricelist filter dropdown (All Pricelists + individual pricelists)
+- [x] Implement partial search matching for item name and SKU code
+- [x] Make quantity and unit price inline editable in table
+- [x] Add real-time calculation updates when editing quantity or price
+- [x] Fix totals section: Subtotal, Total Margin (with %), GST (10%), Total
+- [x] Update table columns: Item, SKU, Quantity, Unit Price, Margin/Unit, Margin %, Total
+- [x] Add delete button for each line item

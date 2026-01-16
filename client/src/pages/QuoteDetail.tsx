@@ -3,12 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { SearchableSelect } from "@/components/SearchableSelect";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Trash2, FileDown } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, FileDown, Trash2, Search } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 
@@ -17,8 +22,9 @@ export default function QuoteDetail() {
   const [, setLocation] = useLocation();
   const quoteId = params?.id ? parseInt(params.id) : 0;
 
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("1");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPricelistId, setSelectedPricelistId] = useState<string>("all");
+  const [editingItems, setEditingItems] = useState<Record<number, { quantity: number; sellPrice: number }>>({});
 
   const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
   const { data: customer } = trpc.customers.get.useQuery(
@@ -26,14 +32,24 @@ export default function QuoteDetail() {
     { enabled: !!quote?.customerId }
   );
   const { data: allProducts } = trpc.pricelistItems.listAll.useQuery();
+  const { data: pricelists } = trpc.pricelists.list.useQuery();
   const utils = trpc.useUtils();
 
   const addItemMutation = trpc.quoteItems.create.useMutation({
     onSuccess: async () => {
       await utils.quotes.get.invalidate({ id: quoteId });
-      setSelectedProductId("");
-      setQuantity("1");
+      setSearchQuery("");
       toast.success("Item added to quote");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateItemMutation = trpc.quoteItems.update.useMutation({
+    onSuccess: async () => {
+      await utils.quotes.get.invalidate({ id: quoteId });
+      toast.success("Item updated");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -62,35 +78,59 @@ export default function QuoteDetail() {
     },
   });
 
-  const handleAddItem = () => {
-    if (!selectedProductId) {
-      toast.error("Please select a product");
-      return;
+  // Filter products based on search query and selected pricelist
+  const filteredProducts = useMemo(() => {
+    if (!allProducts) return [];
+    
+    let filtered = allProducts;
+    
+    // Filter by pricelist
+    if (selectedPricelistId !== "all") {
+      filtered = filtered.filter(p => p.pricelistId === parseInt(selectedPricelistId));
     }
-    if (!quantity || parseFloat(quantity) <= 0) {
-      toast.error("Please enter a valid quantity");
-      return;
+    
+    // Filter by search query (partial match on item name or SKU)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.itemName.toLowerCase().includes(query) || 
+        (p.skuCode && p.skuCode.toLowerCase().includes(query))
+      );
     }
+    
+    return filtered.slice(0, 10); // Limit to 10 results
+  }, [allProducts, searchQuery, selectedPricelistId]);
 
-    const product = allProducts?.find(p => p.id === parseInt(selectedProductId));
-    if (!product) {
-      toast.error("Product not found");
-      return;
-    }
-
+  const handleAddProduct = (product: any) => {
     const sellPrice = parseFloat(product.sellPrice || product.rrpExGst || "0");
     const buyPrice = parseFloat(product.looseBuyPrice || "0");
-    const qty = parseFloat(quantity);
-    const lineTotal = sellPrice * qty;
-    const margin = lineTotal - (buyPrice * qty);
+    const quantity = 1;
 
     addItemMutation.mutate({
       quoteId,
       pricelistItemId: product.id,
       itemName: product.itemName,
-      quantity: qty,
+      quantity,
       sellPrice,
       buyPrice,
+    });
+  };
+
+  const handleUpdateItem = (itemId: number, quantity: number, sellPrice: number) => {
+    const item = quote?.items?.find(i => i.id === itemId);
+    if (!item) return;
+
+    updateItemMutation.mutate({
+      id: itemId,
+      quantity,
+      sellPrice,
+    });
+    
+    // Clear editing state
+    setEditingItems(prev => {
+      const newState = { ...prev };
+      delete newState[itemId];
+      return newState;
     });
   };
 
@@ -104,19 +144,43 @@ export default function QuoteDetail() {
     generatePDFMutation.mutate({ id: quoteId });
   };
 
-  const productOptions = allProducts?.map((product: any) => ({
-    value: product.id.toString(),
-    label: `${product.itemName} ${product.skuCode ? `(${product.skuCode})` : ""} - $${parseFloat(product.sellPrice || product.rrpExGst || "0").toFixed(2)}`,
-  })) || [];
+  // Initialize editing state when items change
+  useEffect(() => {
+    if (quote?.items) {
+      const initialState: Record<number, { quantity: number; sellPrice: number }> = {};
+      quote.items.forEach(item => {
+        initialState[item.id] = {
+          quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity,
+          sellPrice: parseFloat(item.sellPrice),
+        };
+      });
+      setEditingItems(initialState);
+    }
+  }, [quote?.items]);
 
-  // Calculate selected product details for preview
-  const selectedProduct = selectedProductId ? allProducts?.find((p: any) => p.id === parseInt(selectedProductId)) : null;
-  const previewSellPrice = selectedProduct ? parseFloat(selectedProduct.sellPrice || selectedProduct.rrpExGst || "0") : 0;
-  const previewBuyPrice = selectedProduct ? parseFloat(selectedProduct.looseBuyPrice || "0") : 0;
-  const previewQuantity = parseFloat(quantity) || 0;
-  const previewLineTotal = previewSellPrice * previewQuantity;
-  const previewMargin = previewLineTotal - (previewBuyPrice * previewQuantity);
-  const previewMarginPercent = previewLineTotal > 0 ? (previewMargin / previewLineTotal) * 100 : 0;
+  // Calculate totals
+  const calculations = useMemo(() => {
+    if (!quote?.items) return { subtotal: 0, totalMargin: 0, marginPercent: 0, gst: 0, total: 0 };
+    
+    const subtotal = quote.items.reduce((sum, item) => {
+      const qty = editingItems[item.id]?.quantity ?? item.quantity;
+      const price = editingItems[item.id]?.sellPrice ?? parseFloat(item.sellPrice);
+      return sum + (qty * price);
+    }, 0);
+    
+    const totalCost = quote.items.reduce((sum, item) => {
+      const qty = editingItems[item.id]?.quantity ?? item.quantity;
+      const buyPrice = parseFloat(item.buyPrice);
+      return sum + (qty * buyPrice);
+    }, 0);
+    
+    const totalMargin = subtotal - totalCost;
+    const marginPercent = subtotal > 0 ? (totalMargin / subtotal) * 100 : 0;
+    const gst = subtotal * 0.1;
+    const total = subtotal + gst;
+    
+    return { subtotal, totalMargin, marginPercent, gst, total };
+  }, [quote?.items, editingItems]);
 
   if (isLoading) {
     return (
@@ -169,158 +233,196 @@ export default function QuoteDetail() {
           </div>
         </div>
 
-        {/* Quote Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${parseFloat(quote.totalAmount || "0").toFixed(2)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Margin</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                ${parseFloat(quote.totalMargin || "0").toFixed(2)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Margin %</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{quote.marginPercentage || "0"}%</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Add Product Section */}
+        {/* Line Items Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Add Product to Quote</CardTitle>
+            <CardTitle>Line Items</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Search and Filter */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="product">Search Product *</Label>
-                <SearchableSelect
-                  options={productOptions}
-                  value={selectedProductId}
-                  onValueChange={setSelectedProductId}
-                  placeholder="Search for a product..."
-                  searchPlaceholder="Search by name or SKU..."
-                  emptyText="No products found."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity *</Label>
+              <div className="md:col-span-2 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="Enter quantity"
+                  type="text"
+                  placeholder="Search by item name or SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
                 />
               </div>
+              <Select value={selectedPricelistId} onValueChange={setSelectedPricelistId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Pricelists" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Pricelists</SelectItem>
+                  {pricelists?.map((pricelist) => (
+                    <SelectItem key={pricelist.id} value={pricelist.id.toString()}>
+                      {pricelist.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Preview Section */}
-            {selectedProduct && (
-              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                <h4 className="font-semibold text-sm">Preview</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Sell Price</p>
-                    <p className="font-medium">${previewSellPrice.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Buy Price</p>
-                    <p className="font-medium">${previewBuyPrice.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Line Total</p>
-                    <p className="font-medium">${previewLineTotal.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Margin</p>
-                    <p className="font-medium text-green-600">${previewMargin.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Margin %</p>
-                    <p className="font-medium text-green-600">{previewMarginPercent.toFixed(2)}%</p>
-                  </div>
-                </div>
+            {/* Search Results */}
+            {searchQuery && filteredProducts.length > 0 && (
+              <div className="border rounded-lg p-2 max-h-60 overflow-y-auto space-y-1">
+                {filteredProducts.map((product: any) => (
+                  <button
+                    key={product.id}
+                    onClick={() => handleAddProduct(product)}
+                    className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="font-medium">{product.itemName}</div>
+                      {product.skuCode && (
+                        <div className="text-sm text-muted-foreground">{product.skuCode}</div>
+                      )}
+                    </div>
+                    <div className="text-sm font-medium">
+                      ${parseFloat(product.sellPrice || product.rrpExGst || "0").toFixed(2)}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
 
-            <Button onClick={handleAddItem} disabled={addItemMutation.isPending}>
-              <Plus className="mr-2 h-4 w-4" />
-              {addItemMutation.isPending ? "Adding..." : "Add to Quote"}
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Items Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 font-medium">Item</th>
+                    <th className="text-left p-3 font-medium">SKU</th>
+                    <th className="text-right p-3 font-medium">Quantity</th>
+                    <th className="text-right p-3 font-medium">Unit Price</th>
+                    <th className="text-right p-3 font-medium">Margin/Unit</th>
+                    <th className="text-right p-3 font-medium">Margin %</th>
+                    <th className="text-right p-3 font-medium">Total</th>
+                    <th className="text-right p-3 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quote.items && quote.items.length > 0 ? (
+                    quote.items.map((item) => {
+                      const qty = editingItems[item.id]?.quantity ?? (typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity);
+                      const sellPrice = editingItems[item.id]?.sellPrice ?? parseFloat(item.sellPrice);
+                      const buyPrice = parseFloat(item.buyPrice);
+                      const lineTotal = qty * sellPrice;
+                      const marginPerUnit = sellPrice - buyPrice;
+                      const marginPercent = sellPrice > 0 ? (marginPerUnit / sellPrice) * 100 : 0;
+                      
+                      const hasChanges = 
+                        (editingItems[item.id]?.quantity !== undefined && Math.abs(editingItems[item.id]?.quantity - (typeof item.quantity === 'string' ? parseFloat(item.quantity) : item.quantity)) > 0.01) ||
+                        (editingItems[item.id]?.sellPrice !== undefined && Math.abs(editingItems[item.id]?.sellPrice - parseFloat(item.sellPrice)) > 0.01);
 
-        {/* Quote Items Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quote Items</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {quote.items && quote.items.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Sell Price</TableHead>
-                    <TableHead className="text-right">Buy Price</TableHead>
-                    <TableHead className="text-right">Line Total</TableHead>
-                    <TableHead className="text-right">Margin</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {quote.items.map((item) => {
-                    const itemMarginPercent = parseFloat(item.lineTotal) > 0
-                      ? (parseFloat(item.margin) / parseFloat(item.lineTotal)) * 100
-                      : 0;
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.itemName}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">${parseFloat(item.sellPrice).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${parseFloat(item.buyPrice).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">
-                          <span className="text-green-600 font-medium">
-                            ${parseFloat(item.margin).toFixed(2)} ({itemMarginPercent.toFixed(2)}%)
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteItem(item.id)}
-                            disabled={deleteItemMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="p-12 text-center">
-                <p className="text-muted-foreground">No items added to this quote yet</p>
+                      return (
+                        <tr key={item.id} className="border-t">
+                          <td className="p-3">{item.itemName}</td>
+                          <td className="p-3 text-muted-foreground">{item.pricelistItemId}</td>
+                          <td className="p-3">
+                            <Input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={qty}
+                              onChange={(e) => {
+                                const newQty = parseFloat(e.target.value) || 1;
+      setEditingItems(prev => ({
+        ...prev,
+        [item.id]: { quantity: newQty, sellPrice: prev[item.id]?.sellPrice ?? parseFloat(item.sellPrice) }
+      }));
+                              }}
+                              onBlur={() => {
+                                if (hasChanges) {
+                                  handleUpdateItem(item.id, qty, sellPrice);
+                                }
+                              }}
+                              className="w-24 text-right"
+                            />
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="text-muted-foreground">$</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={sellPrice.toFixed(2)}
+                                onChange={(e) => {
+                                  const newPrice = parseFloat(e.target.value) || 0;
+      setEditingItems(prev => ({
+        ...prev,
+        [item.id]: { quantity: prev[item.id]?.quantity ?? item.quantity, sellPrice: newPrice }
+      }));
+                                }}
+                                onBlur={() => {
+                                  if (hasChanges) {
+                                    handleUpdateItem(item.id, qty, sellPrice);
+                                  }
+                                }}
+                                className="w-28 text-right"
+                              />
+                            </div>
+                          </td>
+                          <td className="p-3 text-right text-green-600 font-medium">
+                            ${marginPerUnit.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right text-green-600 font-medium">
+                            {marginPercent.toFixed(1)}%
+                          </td>
+                          <td className="p-3 text-right font-medium">
+                            ${lineTotal.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteItem(item.id)}
+                              disabled={deleteItemMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                        No items added to this quote yet. Search for products above to add them.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals Section */}
+            {quote.items && quote.items.length > 0 && (
+              <div className="flex justify-end">
+                <div className="w-full md:w-96 space-y-2 border-t pt-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span className="font-medium">${calculations.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Total Margin:</span>
+                    <span className="font-medium text-green-600">
+                      ${calculations.totalMargin.toFixed(2)} ({calculations.marginPercent.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>GST (10%):</span>
+                    <span className="font-medium">${calculations.gst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                    <span>Total:</span>
+                    <span>${calculations.total.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

@@ -262,6 +262,37 @@ export const appRouter = router({
         await dbHelpers.deletePricelist(input.id);
         return { success: true };
       }),
+    
+    bulkCreateItems: protectedProcedure
+      .input(z.object({
+        items: z.array(z.object({
+          pricelistId: z.number(),
+          itemName: z.string(),
+          skuCode: z.string().nullable().optional(),
+          packSize: z.string().nullable().optional(),
+          packBuyPrice: z.number().nullable().optional(),
+          looseBuyPrice: z.number(),
+          rrpExGst: z.number(),
+          rrpIncGst: z.number().nullable().optional(),
+          sellPrice: z.number().optional(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        const itemsToInsert = input.items.map(item => ({
+          pricelistId: item.pricelistId,
+          itemName: item.itemName,
+          skuCode: item.skuCode || null,
+          packSize: item.packSize || null,
+          packBuyPrice: item.packBuyPrice?.toString() || null,
+          looseBuyPrice: item.looseBuyPrice.toString(),
+          rrpExGst: item.rrpExGst.toString(),
+          rrpIncGst: item.rrpIncGst?.toString() || null,
+          sellPrice: item.sellPrice?.toString() || item.rrpExGst.toString(),
+        }));
+        
+        await dbHelpers.bulkCreatePricelistItems(itemsToInsert);
+        return { count: itemsToInsert.length };
+      }),
   }),
 
   pricelistItems: router({
@@ -527,6 +558,59 @@ export const appRouter = router({
         return { success: true };
       }),
     
+    addItem: protectedProcedure
+      .input(z.object({
+        quoteId: z.number(),
+        pricelistItemId: z.number(),
+        quantity: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        // Get pricelist item details
+        const allItems = await dbHelpers.getAllPricelistItems();
+        const pricelistItem = allItems.find(item => item.id === input.pricelistItemId);
+        
+        if (!pricelistItem) {
+          throw new Error("Pricelist item not found");
+        }
+        
+        const sellPrice = parseFloat(pricelistItem.sellPrice || pricelistItem.rrpExGst || "0");
+        const buyPrice = parseFloat(pricelistItem.looseBuyPrice || "0");
+        const lineTotal = sellPrice * input.quantity;
+        const margin = (sellPrice - buyPrice) * input.quantity;
+        
+        // Create quote item
+        const item = await dbHelpers.createQuoteItem({
+          quoteId: input.quoteId,
+          pricelistItemId: input.pricelistItemId,
+          itemName: pricelistItem.itemName,
+          quantity: input.quantity.toString(),
+          sellPrice: sellPrice.toString(),
+          buyPrice: buyPrice.toString(),
+          margin: margin.toString(),
+          lineTotal: lineTotal.toString(),
+        });
+        
+        // Recalculate quote totals
+        const items = await dbHelpers.getQuoteItems(input.quoteId);
+        let totalAmount = 0;
+        let totalMargin = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+          totalMargin += parseFloat(item.margin);
+        });
+        
+        const marginPercentage = totalAmount > 0 ? (totalMargin / totalAmount) * 100 : 0;
+        
+        await dbHelpers.updateQuote(input.quoteId, {
+          totalAmount: totalAmount.toFixed(2),
+          totalMargin: totalMargin.toFixed(2),
+          marginPercentage: marginPercentage.toFixed(2),
+        });
+        
+        return item;
+      }),
+    
     generatePDF: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -663,6 +747,49 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await dbHelpers.deletePurchaseOrder(input.id);
         return { success: true };
+      }),
+    
+    addItem: protectedProcedure
+      .input(z.object({
+        purchaseOrderId: z.number(),
+        pricelistItemId: z.number(),
+        quantity: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        // Get pricelist item details
+        const allItems = await dbHelpers.getAllPricelistItems();
+        const pricelistItem = allItems.find(item => item.id === input.pricelistItemId);
+        
+        if (!pricelistItem) {
+          throw new Error("Pricelist item not found");
+        }
+        
+        const buyPrice = parseFloat(pricelistItem.looseBuyPrice || "0");
+        const lineTotal = buyPrice * input.quantity;
+        
+        // Create PO item
+        const item = await dbHelpers.createPurchaseOrderItem({
+          purchaseOrderId: input.purchaseOrderId,
+          pricelistItemId: input.pricelistItemId,
+          itemName: pricelistItem.itemName,
+          quantity: input.quantity.toString(),
+          buyPrice: buyPrice.toString(),
+          lineTotal: lineTotal.toString(),
+        });
+        
+        // Recalculate PO totals
+        const items = await dbHelpers.getPurchaseOrderItems(input.purchaseOrderId);
+        let totalAmount = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+        });
+        
+        await dbHelpers.updatePurchaseOrder(input.purchaseOrderId, {
+          totalAmount: totalAmount.toFixed(2),
+        });
+        
+        return item;
       }),
     
     recalculateTotals: protectedProcedure

@@ -90,7 +90,7 @@ describe("Backend Functionality Tests", () => {
       const { ctx } = createAuthContext();
       const caller = appRouter.createCaller(ctx);
 
-      const items = await caller.pricelists.listItems({ pricelistId });
+      const items = await caller.pricelistItems.list({ pricelistId });
       expect(items.length).toBe(2);
       expect(items[0]?.itemName).toBe("Test Item 1");
       expect(items[1]?.itemName).toBe("Test Item 2");
@@ -100,16 +100,16 @@ describe("Backend Functionality Tests", () => {
       const { ctx } = createAuthContext();
       const caller = appRouter.createCaller(ctx);
 
-      const items = await caller.pricelists.listItems({ pricelistId });
+      const items = await caller.pricelistItems.list({ pricelistId });
       const itemId = items[0]!.id;
 
-      await caller.pricelists.updateItem({
+      await caller.pricelistItems.update({
         id: itemId,
-        sellPrice: 18,
+        sellPrice: "18",
       });
 
-      const updatedItems = await caller.pricelists.listItems({ pricelistId });
-      expect(updatedItems[0]?.sellPrice).toBe(18);
+      const updatedItems = await caller.pricelistItems.list({ pricelistId });
+      expect(parseFloat(updatedItems[0]?.sellPrice || "0")).toBe(18);
     });
   });
 
@@ -190,7 +190,7 @@ describe("Backend Functionality Tests", () => {
       const { ctx } = createAuthContext();
       const caller = appRouter.createCaller(ctx);
 
-      const items = await caller.pricelists.listItems({ pricelistId });
+      const items = await caller.pricelistItems.list({ pricelistId });
       const item1 = items[0]!;
 
       await caller.quotes.addItem({
@@ -203,16 +203,16 @@ describe("Backend Functionality Tests", () => {
       expect(quote.items.length).toBe(1);
 
       const lineItem = quote.items[0]!;
-      expect(lineItem.quantity).toBe(10);
-      expect(lineItem.sellPrice).toBe(18); // Updated sell price from earlier test
-      expect(lineItem.buyPrice).toBe(12); // Loose buy price
-      expect(lineItem.margin).toBe(6); // 18 - 12
-      expect(lineItem.lineTotal).toBe(180); // 18 * 10
+      expect(parseFloat(lineItem.quantity)).toBe(10);
+      expect(parseFloat(lineItem.sellPrice)).toBe(18); // Updated sell price from earlier test
+      expect(parseFloat(lineItem.buyPrice)).toBe(12); // Loose buy price
+      expect(parseFloat(lineItem.margin)).toBe(60); // (18 - 12) * 10
+      expect(parseFloat(lineItem.lineTotal)).toBe(180); // 18 * 10
 
       // Check quote totals
-      expect(quote.totalAmount).toBe(180);
-      expect(quote.totalMargin).toBe(60); // 6 * 10
-      expect(quote.marginPercentage).toBeCloseTo(33.33, 1); // (60 / 180) * 100
+      expect(parseFloat(quote.totalAmount)).toBe(180);
+      expect(parseFloat(quote.totalMargin)).toBe(60); // 6 * 10
+      expect(parseFloat(quote.marginPercentage)).toBeCloseTo(33.33, 1); // (60 / 180) * 100
     });
   });
 
@@ -235,7 +235,7 @@ describe("Backend Functionality Tests", () => {
       const { ctx } = createAuthContext();
       const caller = appRouter.createCaller(ctx);
 
-      const items = await caller.pricelists.listItems({ pricelistId });
+      const items = await caller.pricelistItems.list({ pricelistId });
       const item2 = items[1]!;
 
       await caller.purchaseOrders.addItem({
@@ -248,12 +248,12 @@ describe("Backend Functionality Tests", () => {
       expect(po.items.length).toBe(1);
 
       const lineItem = po.items[0]!;
-      expect(lineItem.quantity).toBe(5);
-      expect(lineItem.buyPrice).toBe(25); // Loose buy price
-      expect(lineItem.lineTotal).toBe(125); // 25 * 5
+      expect(parseFloat(lineItem.quantity)).toBe(5);
+      expect(parseFloat(lineItem.buyPrice)).toBe(25); // Loose buy price
+      expect(parseFloat(lineItem.lineTotal)).toBe(125); // 25 * 5
 
       // Check PO total
-      expect(po.totalAmount).toBe(125);
+      expect(parseFloat(po.totalAmount)).toBe(125);
     });
   });
 

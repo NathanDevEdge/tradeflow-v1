@@ -73,16 +73,36 @@ export default function PurchaseOrderDetailNew() {
       await utils.purchaseOrders.get.cancel({ id: poId });
       const previousPO = utils.purchaseOrders.get.getData({ id: poId });
       
-      if (previousPO && previousPO.items) {
+      if (previousPO && previousPO.items && allProducts) {
         const updatedItems = previousPO.items.map(item => {
           if (item.id === updatedItem.id) {
             const quantity = updatedItem.quantity ?? parseFloat(item.quantity);
-            const buyPrice = parseFloat(item.buyPrice);
+            
+            // Recalculate buy price based on quantity
+            let buyPrice = parseFloat(item.buyPrice);
+            
+            if (item.pricelistItemId) {
+              const pricelistItem = allProducts.find(p => p.id === item.pricelistItemId);
+              if (pricelistItem) {
+                const looseBuyPrice = parseFloat(pricelistItem.looseBuyPrice);
+                const packBuyPrice = pricelistItem.packBuyPrice ? parseFloat(pricelistItem.packBuyPrice) : null;
+                const packSize = pricelistItem.packSize ? parseFloat(pricelistItem.packSize) : null;
+                
+                // Apply smart pricing logic
+                if (packSize && packBuyPrice && quantity >= packSize) {
+                  buyPrice = packBuyPrice;
+                } else {
+                  buyPrice = looseBuyPrice;
+                }
+              }
+            }
+            
             const lineTotal = quantity * buyPrice;
             
             return {
               ...item,
               quantity: quantity.toFixed(2),
+              buyPrice: buyPrice.toFixed(2),
               lineTotal: lineTotal.toFixed(2),
             };
           }

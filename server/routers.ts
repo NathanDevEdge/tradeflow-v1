@@ -909,6 +909,18 @@ export const appRouter = router({
           lineTotal: lineTotal.toFixed(2),
         });
         
+        // Recalculate PO totals
+        const items = await dbHelpers.getPurchaseOrderItems(input.purchaseOrderId);
+        let totalAmount = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+        });
+        
+        await dbHelpers.updatePurchaseOrder(input.purchaseOrderId, {
+          totalAmount: totalAmount.toFixed(2),
+        });
+        
         return item;
       }),
     
@@ -916,35 +928,96 @@ export const appRouter = router({
       .input(z.object({
         id: z.number(),
         quantity: z.number().optional(),
-        buyPrice: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...updates } = input;
+        const { id, quantity: newQuantity } = input;
         
-        // Get current item to recalculate
-        const items = await dbHelpers.getPurchaseOrderItems(0);
-        const currentItem = items.find(i => i.id === id);
+        // Get current item and its pricelist item details
+        const db = await getDb();
+        if (!db) throw new Error("Database connection failed");
+        const { purchaseOrderItems, pricelistItems } = await import("../drizzle/schema");
         
-        if (currentItem) {
-          const quantity = updates.quantity ?? parseFloat(currentItem.quantity);
-          const buyPrice = updates.buyPrice ?? parseFloat(currentItem.buyPrice);
-          
-          const lineTotal = buyPrice * quantity;
-          
-          await dbHelpers.updatePurchaseOrderItem(id, {
-            quantity: quantity.toFixed(2),
-            buyPrice: buyPrice.toFixed(2),
-            lineTotal: lineTotal.toFixed(2),
-          });
+        const allItems = await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.id, id));
+        const currentItem = allItems[0];
+        
+        if (!currentItem) {
+          throw new Error("Purchase order item not found");
         }
         
-        return { success: true };
+        const quantity = newQuantity ?? parseFloat(currentItem.quantity);
+        
+        // Get pricelist item to recalculate buy price
+        let buyPrice = parseFloat(currentItem.buyPrice);
+        
+        if (currentItem.pricelistItemId) {
+          const pricelistItemData = await db.select().from(pricelistItems)
+            .where(eq(pricelistItems.id, currentItem.pricelistItemId));
+          
+          if (pricelistItemData.length > 0) {
+            const pricelistItem = pricelistItemData[0];
+            const { calculateBuyPrice } = await import("./buyPriceLogic");
+            
+            buyPrice = calculateBuyPrice(quantity, {
+              looseBuyPrice: pricelistItem.looseBuyPrice,
+              packBuyPrice: pricelistItem.packBuyPrice,
+              packSize: pricelistItem.packSize,
+            });
+          }
+        }
+        
+        const lineTotal = buyPrice * quantity;
+        
+        // Update the item
+        await dbHelpers.updatePurchaseOrderItem(id, {
+          quantity: quantity.toFixed(2),
+          buyPrice: buyPrice.toFixed(2),
+          lineTotal: lineTotal.toFixed(2),
+        });
+        
+        // Recalculate PO totals
+        const items = await dbHelpers.getPurchaseOrderItems(currentItem.purchaseOrderId);
+        let totalAmount = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+        });
+        
+        await dbHelpers.updatePurchaseOrder(currentItem.purchaseOrderId, {
+          totalAmount: totalAmount.toFixed(2),
+        });
+        
+        return { success: true, buyPrice: buyPrice.toFixed(2) };
       }),
     
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
+        // Get the item to find its purchaseOrderId before deleting
+        const db = await getDb();
+        if (!db) throw new Error("Database connection failed");
+        const { purchaseOrderItems } = await import("../drizzle/schema");
+        const allItems = await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.id, input.id));
+        const currentItem = allItems[0];
+        
+        if (!currentItem) {
+          throw new Error("Purchase order item not found");
+        }
+        
+        // Delete the item
         await dbHelpers.deletePurchaseOrderItem(input.id);
+        
+        // Recalculate PO totals
+        const items = await dbHelpers.getPurchaseOrderItems(currentItem.purchaseOrderId);
+        let totalAmount = 0;
+        
+        items.forEach(item => {
+          totalAmount += parseFloat(item.lineTotal);
+        });
+        
+        await dbHelpers.updatePurchaseOrder(currentItem.purchaseOrderId, {
+          totalAmount: totalAmount.toFixed(2),
+        });
+        
         return { success: true };
       }),
   }),

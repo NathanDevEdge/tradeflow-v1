@@ -207,3 +207,10 @@
 - [x] Show shipping address conditionally for in-store delivery
 - [x] Calculate totals automatically
 - [x] Add tests for smart buy price logic
+
+## Purchase Order Bug Fixes
+- [x] Fix buy price not updating visually when quantity changes
+- [x] Implement smart buy price recalculation in update mutation
+- [x] Fix total calculation (209 boards showing $218.30 instead of correct total)
+- [x] Ensure buy price changes are saved to database
+- [x] Display updated buy price in UI immediately

@@ -240,3 +240,12 @@
 - [x] Make entire purchase order rows clickable
 - [x] Keep action buttons for delete/other operations
 - [x] Add hover effects for better UX
+## Supplier Detail Pages
+- [x] Create SupplierDetail page component
+- [x] Display supplier contact information in organized layout
+- [x] Show list of all purchase orders for the supplier
+- [x] Make PO rows clickable to view details
+- [x] Add statistics (total POs, total spend, pending orders)
+- [x] Add "Create New PO" button on supplier detail page
+- [x] Add backend procedure to get supplier by ID
+- [x] Add backend procedure to get POs by supplier ID

@@ -753,6 +753,12 @@ export const appRouter = router({
       return await dbHelpers.getAllPurchaseOrders();
     }),
     
+    listBySupplier: protectedProcedure
+      .input(z.object({ supplierId: z.number() }))
+      .query(async ({ input }) => {
+        return await dbHelpers.getPurchaseOrdersBySupplier(input.supplierId);
+      }),
+    
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {

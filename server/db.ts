@@ -357,6 +357,12 @@ export async function getAllPurchaseOrders(): Promise<PurchaseOrder[]> {
   return db.select().from(purchaseOrders).orderBy(desc(purchaseOrders.createdAt));
 }
 
+export async function getPurchaseOrdersBySupplier(supplierId: number): Promise<PurchaseOrder[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(purchaseOrders).where(eq(purchaseOrders.supplierId, supplierId)).orderBy(desc(purchaseOrders.createdAt));
+}
+
 export async function getPurchaseOrderById(id: number): Promise<(PurchaseOrder & { items: PurchaseOrderItem[] }) | undefined> {
   const db = await getDb();
   if (!db) return undefined;

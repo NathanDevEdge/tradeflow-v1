@@ -20,6 +20,7 @@ import PricelistDetail from "./pages/PricelistDetail";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import Suppliers from "./pages/Suppliers";
+import SupplierDetail from "./pages/SupplierDetail";
 import Quotes from "./pages/Quotes";
 import QuoteDetail from "./pages/QuoteDetail";
 import PurchaseOrders from "./pages/PurchaseOrders";
@@ -85,6 +86,9 @@ function Router() {
       </Route>
       <Route path="/suppliers">
         {() => <ProtectedRoute component={Suppliers} />}
+      </Route>
+      <Route path="/suppliers/:id">
+        {(params) => <ProtectedRoute component={SupplierDetail} {...params} />}
       </Route>
       <Route path="/quotes">
         {() => <ProtectedRoute component={Quotes} />}

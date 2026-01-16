@@ -32,13 +32,25 @@ export const passwordResetTokens = mysqlTable("password_reset_tokens", {
   expiresAt: timestamp("expiresAt").notNull(),
   used: int("used").default(0).notNull(), // 0 = unused, 1 = used
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type User = typeof users.$inferSelect;
+});export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+export const contactInquiries = mysqlTable("contact_inquiries", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  message: text("message").notNull(),
+  status: mysqlEnum("status", ["new", "contacted", "converted", "archived"]).default("new").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ContactInquiry = typeof contactInquiries.$inferSelect;
+export type InsertContactInquiry = typeof contactInquiries.$inferInsert;
+
 /**
- * User invitations for admin-generated accounts
+ * User invitations table for admin-generated accounts
  */
 export const userInvitations = mysqlTable("user_invitations", {
   id: int("id").autoincrement().primaryKey(),

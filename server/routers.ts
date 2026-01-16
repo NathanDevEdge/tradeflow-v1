@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { contactInquiries } from "../drizzle/schema";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -785,6 +786,32 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await dbHelpers.deleteSupplier(input.id);
+        return { success: true };
+      }),
+  }),
+
+  contact: router({
+    submit: publicProcedure
+      .input(
+        z.object({
+          name: z.string().min(1, "Name is required"),
+          email: z.string().email("Invalid email address"),
+          company: z.string().optional(),
+          message: z.string().min(10, "Message must be at least 10 characters"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+
+        await db.insert(contactInquiries).values({
+          name: input.name,
+          email: input.email,
+          company: input.company || null,
+          message: input.message,
+          status: "new",
+        });
+
         return { success: true };
       }),
   }),

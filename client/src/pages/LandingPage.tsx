@@ -1,10 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, FileText, TrendingUp, Users, Building2, Mail, Zap } from "lucide-react";
+import { Check, FileText, TrendingUp, Users, Building2, Mail, Zap, Shield, Clock, MapPin, X } from "lucide-react";
 import { useLocation } from "wouter";
+import React from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
+  const [contactForm, setContactForm] = React.useState({ name: "", email: "", company: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitSuccess, setSubmitSuccess] = React.useState(false);
+
+  const submitMutation = trpc.contact.submit.useMutation({
+    onSuccess: () => {
+      toast.success("Message sent successfully!");
+      setSubmitSuccess(true);
+      setContactForm({ name: "", email: "", company: "", message: "" });
+      setIsSubmitting(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send message. Please try again.");
+      setIsSubmitting(false);
+    },
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -114,6 +136,108 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Comparison Table Section */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose TradeFlow?</h2>
+            <p className="text-xl text-muted-foreground">See how we compare to traditional methods and complex enterprise software</p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left p-4 font-semibold">Feature</th>
+                  <th className="text-center p-4 font-semibold text-blue-600">TradeFlow</th>
+                  <th className="text-center p-4 font-semibold text-muted-foreground">Manual Spreadsheets</th>
+                  <th className="text-center p-4 font-semibold text-muted-foreground">Enterprise Software</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-slate-100">
+                  <td className="p-4 font-medium">Setup Time</td>
+                  <td className="text-center p-4"><span className="text-green-600 font-semibold">5 minutes</span></td>
+                  <td className="text-center p-4 text-muted-foreground">Hours of formatting</td>
+                  <td className="text-center p-4 text-muted-foreground">Weeks of training</td>
+                </tr>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <td className="p-4 font-medium">Margin Tracking</td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                  <td className="text-center p-4"><X className="h-5 w-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-slate-100">
+                  <td className="p-4 font-medium">Professional PDFs</td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                  <td className="text-center p-4"><X className="h-5 w-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <td className="p-4 font-medium">Data Separation</td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                  <td className="text-center p-4"><X className="h-5 w-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-slate-100">
+                  <td className="p-4 font-medium">Email Integration</td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                  <td className="text-center p-4"><X className="h-5 w-5 text-red-500 mx-auto" /></td>
+                  <td className="text-center p-4"><Check className="h-5 w-5 text-green-600 mx-auto" /></td>
+                </tr>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <td className="p-4 font-medium">Monthly Cost</td>
+                  <td className="text-center p-4"><span className="text-green-600 font-semibold">$40</span></td>
+                  <td className="text-center p-4 text-muted-foreground">Free (but costly errors)</td>
+                  <td className="text-center p-4 text-muted-foreground">$200+ per user</td>
+                </tr>
+                <tr className="border-b border-slate-100">
+                  <td className="p-4 font-medium">Complexity</td>
+                  <td className="text-center p-4"><span className="text-green-600 font-semibold">Simple</span></td>
+                  <td className="text-center p-4 text-muted-foreground">Error-prone</td>
+                  <td className="text-center p-4 text-muted-foreground">Overwhelming</td>
+                </tr>
+                <tr className="bg-slate-50">
+                  <td className="p-4 font-medium">Perfect For</td>
+                  <td className="text-center p-4"><span className="text-blue-600 font-semibold">Small wholesale businesses</span></td>
+                  <td className="text-center p-4 text-muted-foreground">Hobbyists</td>
+                  <td className="text-center p-4 text-muted-foreground">Large enterprises</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Indicators Section */}
+      <section className="container mx-auto px-4 py-12 bg-slate-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <MapPin className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="font-semibold">Australian-Based</h3>
+              <p className="text-sm text-muted-foreground">Hosted in Australia with local support and data sovereignty</p>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Shield className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="font-semibold">Bank-Level Security</h3>
+              <p className="text-sm text-muted-foreground">256-bit encryption, secure backups, and SOC 2 compliant infrastructure</p>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <Clock className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="font-semibold">99.9% Uptime</h3>
+              <p className="text-sm text-muted-foreground">Reliable infrastructure with automatic backups and disaster recovery</p>
+            </div>
           </div>
         </div>
       </section>
@@ -276,6 +400,92 @@ export default function LandingPage() {
               </CardContent>
             </Card>
           </div>
+        </div>
+      </section>
+
+      {/* Contact Form Section */}
+      <section id="contact" className="container mx-auto px-4 py-20">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Get In Touch</h2>
+            <p className="text-xl text-muted-foreground">Have questions? Want to request access? We'd love to hear from you.</p>
+          </div>
+
+          {submitSuccess ? (
+            <Card className="text-center p-8">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Check className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold">Thank You!</h3>
+                <p className="text-muted-foreground">We've received your message and will get back to you within 24 hours.</p>
+                <Button onClick={() => setSubmitSuccess(false)} variant="outline">
+                  Send Another Message
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  setIsSubmitting(true);
+                  submitMutation.mutate(contactForm);
+                }} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Name *</Label>
+                      <Input
+                        id="name"
+                        value={contactForm.name}
+                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                        required
+                        disabled={isSubmitting}
+                        placeholder="John Smith"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={contactForm.email}
+                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                        required
+                        disabled={isSubmitting}
+                        placeholder="john@example.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company</Label>
+                    <Input
+                      id="company"
+                      value={contactForm.company}
+                      onChange={(e) => setContactForm({ ...contactForm, company: e.target.value })}
+                      disabled={isSubmitting}
+                      placeholder="Your Company Name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message *</Label>
+                    <Textarea
+                      id="message"
+                      value={contactForm.message}
+                      onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                      required
+                      disabled={isSubmitting}
+                      placeholder="Tell us about your business and how TradeFlow can help..."
+                      rows={6}
+                    />
+                  </div>
+                  <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? "Sending..." : "Send Message"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 

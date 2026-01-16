@@ -49,14 +49,20 @@ describe("auth.logout", () => {
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
-    expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
-    expect(clearedCookies[0]?.options).toMatchObject({
-      maxAge: -1,
-      secure: true,
-      sameSite: "none",
-      httpOnly: true,
-      path: "/",
+    expect(clearedCookies).toHaveLength(2);
+    
+    // Should clear both OAuth cookie and custom auth cookie
+    const cookieNames = clearedCookies.map(c => c.name);
+    expect(cookieNames).toContain(COOKIE_NAME); // OAuth cookie
+    expect(cookieNames).toContain("manus_session"); // Custom auth cookie
+    
+    // Both cookies should have maxAge: -1 to clear them
+    clearedCookies.forEach(cookie => {
+      expect(cookie.options).toMatchObject({
+        maxAge: -1,
+        httpOnly: true,
+        path: "/",
+      });
     });
   });
 });

@@ -98,3 +98,10 @@
 
 ## Landing Page Updates
 - [x] Remove demo credentials from hero section
+
+## Landing Page Enhancements
+- [x] Add comparison table (TradeFlow vs Manual Spreadsheets vs Enterprise Software)
+- [x] Add contact/inquiry form for lead capture
+- [x] Add trust indicators (Australian-based, security, uptime)
+- [x] Implement backend contact form submission
+- [x] Store contact inquiries in database

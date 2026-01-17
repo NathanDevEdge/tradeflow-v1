@@ -1222,8 +1222,27 @@ export const appRouter = router({
         // Send email notification to admin
         try {
           await notifyOwner({
-            title: "New Contact Form Submission",
-            content: `Name: ${input.name}\nEmail: ${input.email}${input.company ? `\nCompany: ${input.company}` : ""}\n\nMessage:\n${input.message}`,
+            title: "🔔 New Contact Form Submission - TradeFlow",
+            content: `A new inquiry has been submitted through the TradeFlow website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 CONTACT DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👤 Name: ${input.name}
+📧 Email: ${input.email}${input.company ? `\n🏢 Company: ${input.company}` : ""}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 MESSAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${input.message}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏰ Submitted: ${new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })}
+
+💡 Action Required: Reply to ${input.email} to follow up on this inquiry.`,
           });
         } catch (error) {
           console.error("Failed to send email notification:", error);
@@ -1269,6 +1288,13 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "User with this email already exists" });
         }
 
+        // Get organization name
+        const { organizations } = await import("../drizzle/schema");
+        const org = await db.select().from(organizations).where(eq(organizations.id, ctx.organizationId)).limit(1);
+        if (org.length === 0) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Organization not found" });
+        }
+
         // Create new user
         await db.insert(users).values({
           email: input.email,
@@ -1278,6 +1304,20 @@ export const appRouter = router({
           loginMethod: "email",
           status: "pending",
         });
+
+        // Send invitation email
+        try {
+          const { sendInvitationEmail } = await import("./email");
+          await sendInvitationEmail({
+            email: input.email,
+            name: input.name,
+            organizationName: org[0].name,
+            inviterName: ctx.user.name || "Team Admin",
+          });
+        } catch (error) {
+          console.error("Failed to send invitation email:", error);
+          // Don't fail the mutation if email fails
+        }
 
         return { success: true };
       }),

@@ -104,3 +104,82 @@ Best regards
   }
   */
 }
+
+/**
+ * Generic email sending function using Manus notification system
+ */
+export async function sendEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<void> {
+  // For now, use notifyOwner to send emails to admin
+  // In production, integrate with a proper email service
+  const { notifyOwner } = await import("./_core/notification");
+  
+  try {
+    await notifyOwner({
+      title: params.subject,
+      content: `To: ${params.to}\n\n${params.text}`,
+    });
+  } catch (error) {
+    console.error("[Email] Failed to send email:", error);
+    throw new Error("Failed to send email");
+  }
+}
+
+/**
+ * Send user invitation email with registration link
+ */
+export async function sendInvitationEmail(params: {
+  email: string;
+  name: string;
+  organizationName: string;
+  inviterName: string;
+}): Promise<void> {
+  const registrationUrl = `${process.env.VITE_APP_URL || 'http://localhost:3000'}/register?email=${encodeURIComponent(params.email)}`;
+  
+  const html = `
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2563eb;">You've been invited to TradeFlow!</h2>
+          <p>Hi ${params.name},</p>
+          <p>${params.inviterName} has invited you to join <strong>${params.organizationName}</strong> on TradeFlow.</p>
+          <p>TradeFlow is a professional quoting and purchase order management system designed for wholesale distribution.</p>
+          <p>Click the button below to create your account and get started:</p>
+          <div style="margin: 30px 0;">
+            <a href="${registrationUrl}" style="display: inline-block; padding: 12px 30px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">Create Your Account</a>
+          </div>
+          <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+          <p style="color: #666; font-size: 14px; word-break: break-all;">${registrationUrl}</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+        </div>
+      </body>
+    </html>
+  `;
+  
+  const text = `
+You've been invited to TradeFlow!
+
+Hi ${params.name},
+
+${params.inviterName} has invited you to join ${params.organizationName} on TradeFlow.
+
+TradeFlow is a professional quoting and purchase order management system designed for wholesale distribution.
+
+Create your account by visiting:
+${registrationUrl}
+
+If you didn't expect this invitation, you can safely ignore this email.
+  `.trim();
+  
+  await sendEmail({
+    to: params.email,
+    subject: `You've been invited to ${params.organizationName} on TradeFlow`,
+    html,
+    text,
+  });
+}

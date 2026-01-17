@@ -281,3 +281,8 @@
 - [x] Keep orgOwnerProcedure only for organizationUsers router (team management)
 - [x] Update tests to cover all three roles (all 53 tests passing)
 - [x] Ensure company settings are organization-scoped
+
+## Documentation & Repository
+- [ ] Create comprehensive README with technical stack, features, and use cases
+- [ ] Rename GitHub repository to TradeFlow with version number
+- [ ] Push updated README to GitHub

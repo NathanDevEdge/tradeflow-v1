@@ -25,7 +25,7 @@ export const users = mysqlTable("users", {
   passwordHash: varchar("passwordHash", { length: 255 }), // Null for OAuth users
   name: text("name"),
   loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth' or 'email'
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "org_owner", "admin", "super_admin"]).default("user").notNull(),
   status: mysqlEnum("status", ["active", "inactive", "pending"]).default("active").notNull(),
   subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]),
   subscriptionEndDate: timestamp("subscriptionEndDate"),

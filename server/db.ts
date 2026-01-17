@@ -500,3 +500,9 @@ export async function assignUserToOrganization(userId: number, organizationId: n
   if (!db) throw new Error("Database not available");
   await db.update(users).set({ organizationId }).where(eq(users.id, userId));
 }
+
+export async function getUsersByOrganization(organizationId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(users).where(eq(users.organizationId, organizationId));
+}

@@ -4,12 +4,13 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { notifyOwner } from "./_core/notification";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { orgProcedure } from "./organizationMiddleware";
 import { z } from "zod";
 import * as dbHelpers from "./db";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdf";
 import { sendPurchaseOrderEmail } from "./email";
 import * as customAuth from "./customAuth";
@@ -65,10 +66,27 @@ function parseDecimal(value: string | undefined): string | undefined {
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") {
+  if (ctx.user.role !== "admin" && ctx.user.role !== "super_admin") {
     throw new Error("Admin access required");
   }
   return next({ ctx });
+});
+
+const superAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "super_admin") {
+    throw new Error("Super admin access required");
+  }
+  return next({ ctx });
+});
+
+const orgOwnerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "org_owner" && ctx.user.role !== "super_admin") {
+    throw new Error("Organization owner access required");
+  }
+  if (!ctx.user.organizationId) {
+    throw new Error("User must belong to an organization");
+  }
+  return next({ ctx: { ...ctx, organizationId: ctx.user.organizationId } });
 });
 
 export const appRouter = router({
@@ -1216,26 +1234,128 @@ export const appRouter = router({
       }),
   }),
 
-  // Organizations router
+  // Organizations router (super admin only)
   organizations: router({
-    list: protectedProcedure.query(async () => {
+    list: superAdminProcedure.query(async () => {
       return dbHelpers.getAllOrganizations();
     }),
 
-    create: protectedProcedure
+    create: superAdminProcedure
       .input(z.object({ name: z.string().min(1) }))
       .mutation(async ({ input }) => {
         return dbHelpers.createOrganization(input.name);
       }),
   }),
 
-  // Users router
+  // Organization Users router (for org owners to manage their team)
+  organizationUsers: router({
+    list: orgOwnerProcedure.query(async ({ ctx }) => {
+      return dbHelpers.getUsersByOrganization(ctx.organizationId);
+    }),
+
+    invite: orgOwnerProcedure
+      .input(z.object({
+        email: z.string().email(),
+        name: z.string().min(1),
+        role: z.enum(["user", "org_owner"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Check if user already exists
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        const existingUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        if (existingUser.length > 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "User with this email already exists" });
+        }
+
+        // Create new user
+        await db.insert(users).values({
+          email: input.email,
+          name: input.name,
+          role: input.role,
+          organizationId: ctx.organizationId,
+          loginMethod: "email",
+          status: "pending",
+        });
+
+        return { success: true };
+      }),
+
+    updateRole: orgOwnerProcedure
+      .input(z.object({
+        userId: z.number(),
+        role: z.enum(["user", "org_owner"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Verify user belongs to the same organization
+        const targetUser = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+        if (targetUser.length === 0 || targetUser[0].organizationId !== ctx.organizationId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot modify user from different organization" });
+        }
+
+        await db.update(users).set({ role: input.role }).where(eq(users.id, input.userId));
+        return { success: true };
+      }),
+
+    resetPassword: orgOwnerProcedure
+      .input(z.object({
+        userId: z.number(),
+        newPassword: z.string().min(8),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Verify user belongs to the same organization
+        const targetUser = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+        if (targetUser.length === 0 || targetUser[0].organizationId !== ctx.organizationId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot modify user from different organization" });
+        }
+
+        // Hash password (you'll need to import bcrypt or similar)
+        const bcrypt = require("bcrypt");
+        const passwordHash = await bcrypt.hash(input.newPassword, 10);
+        
+        await db.update(users).set({ passwordHash }).where(eq(users.id, input.userId));
+        return { success: true };
+      }),
+
+    delete: orgOwnerProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Verify user belongs to the same organization
+        const targetUser = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+        if (targetUser.length === 0 || targetUser[0].organizationId !== ctx.organizationId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot delete user from different organization" });
+        }
+
+        // Prevent deleting the last org owner
+        const orgOwners = await db.select().from(users)
+          .where(and(eq(users.organizationId, ctx.organizationId), eq(users.role, "org_owner")));
+        
+        if (orgOwners.length === 1 && orgOwners[0].id === input.userId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the last organization owner" });
+        }
+
+        await db.delete(users).where(eq(users.id, input.userId));
+        return { success: true };
+      }),
+  }),
+
+  // Users router (super admin only)
   users: router({
-    list: protectedProcedure.query(async () => {
+    list: superAdminProcedure.query(async () => {
       return dbHelpers.getAllUsers();
     }),
 
-    assignToOrganization: protectedProcedure
+    assignToOrganization: superAdminProcedure
       .input(z.object({ 
         userId: z.number(), 
         organizationId: z.number() 

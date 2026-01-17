@@ -21,22 +21,23 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Building2, ShoppingCart, Shield, Mail, FileCheck, Search, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, FileText, Building2, ShoppingCart, Shield, Mail, FileCheck, Search, Settings, UserCog } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", adminOnly: false },
-  { icon: FileText, label: "Pricelists", path: "/pricelists", adminOnly: false },
-  { icon: Users, label: "Customers", path: "/customers", adminOnly: false },
-  { icon: Building2, label: "Suppliers", path: "/suppliers", adminOnly: false },
-  { icon: ShoppingCart, label: "Quotes", path: "/quotes", adminOnly: false },
-  { icon: FileCheck, label: "Purchase Orders", path: "/purchase-orders", adminOnly: false },
-  { icon: Settings, label: "Settings", path: "/settings", adminOnly: false },
-  { icon: Shield, label: "Admin Panel", path: "/admin/panel", adminOnly: true },
-  { icon: Mail, label: "Contact Inbox", path: "/admin/contacts", adminOnly: true },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", adminOnly: false, orgOwnerOnly: false },
+  { icon: FileText, label: "Pricelists", path: "/pricelists", adminOnly: false, orgOwnerOnly: false },
+  { icon: Users, label: "Customers", path: "/customers", adminOnly: false, orgOwnerOnly: false },
+  { icon: Building2, label: "Suppliers", path: "/suppliers", adminOnly: false, orgOwnerOnly: false },
+  { icon: ShoppingCart, label: "Quotes", path: "/quotes", adminOnly: false, orgOwnerOnly: false },
+  { icon: FileCheck, label: "Purchase Orders", path: "/purchase-orders", adminOnly: false, orgOwnerOnly: false },
+  { icon: Settings, label: "Settings", path: "/settings", adminOnly: false, orgOwnerOnly: false },
+  { icon: UserCog, label: "Team Members", path: "/organization/users", adminOnly: false, orgOwnerOnly: true },
+  { icon: Shield, label: "Admin Panel", path: "/admin/panel", adminOnly: true, orgOwnerOnly: false },
+  { icon: Mail, label: "Contact Inbox", path: "/admin/contacts", adminOnly: true, orgOwnerOnly: false },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -173,7 +174,11 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.filter(item => !item.adminOnly || user?.role === "admin").map(item => {
+              {menuItems.filter(item => {
+                if (item.adminOnly && user?.role !== "super_admin") return false;
+                if (item.orgOwnerOnly && user?.role !== "org_owner" && user?.role !== "super_admin") return false;
+                return true;
+              }).map(item => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>

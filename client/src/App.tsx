@@ -27,6 +27,7 @@ import QuoteDetail from "./pages/QuoteDetail";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PurchaseOrderDetailNew from "./pages/PurchaseOrderDetailNew";
 import Settings from "./pages/Settings";
+import OrganizationUsers from "./pages/OrganizationUsers";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isAuthenticated, loading } = useAuth();
@@ -105,6 +106,7 @@ function Router() {
       </Route>
       <Route path="/purchase-orders/:id" component={() => <ProtectedRoute component={PurchaseOrderDetailNew} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/organization/users" component={() => <ProtectedRoute component={OrganizationUsers} />} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

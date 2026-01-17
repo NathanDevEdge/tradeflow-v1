@@ -268,3 +268,16 @@
 - [ ] Add organization selector for admin users
 - [x] Migrate existing data to default organization
 - [x] Test data isolation between organizations
+
+## User Role Hierarchy
+- [x] Update user role enum to include 'org_owner' and 'super_admin'
+- [x] Update Settings page to use current user's organization
+- [x] Build user management UI for org owners (invite, edit permissions, reset password, delete)
+- [ ] Create organization switcher for super admin in navigation (SKIPPED - not needed, super admin can create users in any org)
+- [x] Implement permission middleware for org_owner actions (orgOwnerProcedure)
+- [x] Implement permission middleware for super_admin actions (superAdminProcedure)
+- [x] Revert delete operations from orgOwnerProcedure to orgProcedure (allow all users to delete)
+- [x] Apply superAdminProcedure to organizations and users routers
+- [x] Keep orgOwnerProcedure only for organizationUsers router (team management)
+- [x] Update tests to cover all three roles (all 53 tests passing)
+- [x] Ensure company settings are organization-scoped

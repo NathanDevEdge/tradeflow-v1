@@ -373,3 +373,7 @@
 - [ ] Fix purchase order creation to include organizationId from context
 - [ ] Ensure all PO queries filter by organizationId
 - [ ] Test PO creation in new organization
+
+## Branding Update
+- [x] Replace favicon with DevEdge Solutions logo
+- [x] Replace TradeFlow icon with DevEdge Solutions logo in sidebar

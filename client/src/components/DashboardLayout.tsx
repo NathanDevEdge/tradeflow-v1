@@ -165,9 +165,7 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
+                  <img src="/logo.png" alt="DevEdge Solutions" className="h-8 object-contain" />
                 </div>
               ) : null}
             </div>

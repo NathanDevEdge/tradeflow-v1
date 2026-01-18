@@ -318,3 +318,7 @@
 - [x] Update PO detail page to open modal instead of inline editing
 - [x] Save address only when modal is submitted
 - [ ] Test shipping address workflow
+
+## PDF Generation Fixes
+- [x] Display actual shipping address in PDF when delivery method is "in_store_delivery"
+- [x] Remove underscores from delivery method labels (pickup_from_supplier → Pickup from Supplier, in_store_delivery → In-store Delivery)

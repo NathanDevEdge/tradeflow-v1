@@ -402,14 +402,24 @@ export async function generatePurchaseOrderPDF(poId: number, organizationId: num
           ""
         );
         
+        // Format delivery method nicely
+        const deliveryMethodFormatted = po.deliveryMethod === "pickup_from_supplier" 
+          ? "Pickup from Supplier" 
+          : "In-store Delivery";
+        
+        // Use shipping address if delivery method is in-store delivery
+        const deliveryAddress = po.deliveryMethod === "in_store_delivery" && po.shippingAddress
+          ? po.shippingAddress
+          : "";
+        
         drawRecipientCard(
           doc,
           305,
           y,
           240,
           "DELIVERY",
-          po.deliveryMethod || "Pickup from Supplier",
-          "",
+          deliveryMethodFormatted,
+          deliveryAddress,
           "",
           ""
         );

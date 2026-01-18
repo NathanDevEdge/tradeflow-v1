@@ -187,7 +187,7 @@ export const quotes = mysqlTable("quotes", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull(),
   customerId: int("customerId").notNull(),
-  quoteNumber: varchar("quoteNumber", { length: 50 }).notNull().unique(),
+  quoteNumber: varchar("quoteNumber", { length: 50 }).notNull(),
   status: mysqlEnum("status", ["draft", "sent", "accepted", "declined"]).default("draft").notNull(),
   totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull().default("0"),
   totalMargin: decimal("totalMargin", { precision: 10, scale: 2 }).notNull().default("0"),
@@ -228,7 +228,7 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   id: int("id").autoincrement().primaryKey(),
   organizationId: int("organizationId").notNull(),
   supplierId: int("supplierId").notNull(),
-  poNumber: varchar("poNumber", { length: 50 }).notNull().unique(),
+  poNumber: varchar("poNumber", { length: 50 }).notNull(),
   status: mysqlEnum("status", ["draft", "sent", "received", "cancelled"]).default("draft").notNull(),
   deliveryMethod: mysqlEnum("deliveryMethod", ["in_store_delivery", "pickup_from_supplier"]).default("pickup_from_supplier").notNull(),
   shippingAddress: text("shippingAddress"), // Only used when deliveryMethod is in_store_delivery

@@ -344,3 +344,11 @@
 - [x] Update all subscription-related queries and procedures
 - [ ] Test user limit enforcement
 - [ ] Test subscription status checks
+
+## Subscription Management UI (Super Admin)
+- [x] Display remaining days for organization subscriptions
+- [x] Add "Extend Subscription" button to add days to subscription
+- [x] Add "Change Subscription Type" dropdown (monthly/annual/indefinite)
+- [x] Add "Change User Limit" input to adjust max users per organization
+- [x] Add backend procedures for updating subscription settings
+- [ ] Test subscription extension and type changes

@@ -32,7 +32,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Building2, UserPlus, Users, Trash2 } from "lucide-react";
+import { Building2, UserPlus, Users, Trash2, Calendar, Settings2 } from "lucide-react";
 
 export default function SuperAdminPanel() {
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
@@ -93,6 +93,47 @@ export default function SuperAdminPanel() {
     },
   });
 
+  const [extendOrgId, setExtendOrgId] = useState<number | null>(null);
+  const [extendDays, setExtendDays] = useState("30");
+  const [editSubOrgId, setEditSubOrgId] = useState<number | null>(null);
+  const [editSubType, setEditSubType] = useState<"monthly" | "annual" | "indefinite">("monthly");
+  const [editUserLimitOrgId, setEditUserLimitOrgId] = useState<number | null>(null);
+  const [editUserLimit, setEditUserLimit] = useState("5");
+
+  const extendSubMutation = trpc.organizations.extendSubscription.useMutation({
+    onSuccess: () => {
+      toast.success("Subscription extended successfully");
+      setExtendOrgId(null);
+      setExtendDays("30");
+      refetchOrgs();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateSubMutation = trpc.organizations.updateSubscription.useMutation({
+    onSuccess: () => {
+      toast.success("Subscription type updated successfully");
+      setEditSubOrgId(null);
+      refetchOrgs();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateUserLimitMutation = trpc.organizations.updateUserLimit.useMutation({
+    onSuccess: () => {
+      toast.success("User limit updated successfully");
+      setEditUserLimitOrgId(null);
+      refetchOrgs();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleCreateOrg = () => {
     if (!orgName.trim()) {
       toast.error("Please enter an organization name");
@@ -130,6 +171,16 @@ export default function SuperAdminPanel() {
     if (!orgId) return "No Organization";
     const org = organizations?.find(o => o.id === orgId);
     return org?.name || "Unknown";
+  };
+
+  const calculateDaysRemaining = (endDate: Date | null, subType: string | null) => {
+    if (subType === "indefinite") return "∞";
+    if (!endDate) return "N/A";
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? `${diffDays} days` : "Expired";
   };
 
   return (
@@ -221,9 +272,10 @@ export default function SuperAdminPanel() {
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Subscription</TableHead>
+                      <TableHead>Remaining</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Users</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -235,6 +287,9 @@ export default function SuperAdminPanel() {
                           <span className="capitalize">{org.subscriptionType || "monthly"}</span>
                         </TableCell>
                         <TableCell>
+                          <span className="text-sm">{calculateDaysRemaining(org.subscriptionEndDate, org.subscriptionType)}</span>
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={org.subscriptionStatus === "active" ? "default" : "destructive"}>
                             {org.subscriptionStatus || "active"}
                           </Badge>
@@ -244,7 +299,88 @@ export default function SuperAdminPanel() {
                             {allUsers?.filter(u => u.organizationId === org.id).length || 0} / {org.userLimit || 5}
                           </Badge>
                         </TableCell>
-                        <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Dialog open={extendOrgId === org.id} onOpenChange={(open) => !open && setExtendOrgId(null)}>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" onClick={() => setExtendOrgId(org.id)}>
+                                  <Calendar className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Extend Subscription</DialogTitle>
+                                  <DialogDescription>Add days to {org.name}'s subscription</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="days">Days to Add</Label>
+                                    <Input
+                                      id="days"
+                                      type="number"
+                                      min="1"
+                                      value={extendDays}
+                                      onChange={(e) => setExtendDays(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button onClick={() => extendSubMutation.mutate({ organizationId: org.id, days: parseInt(extendDays) })} disabled={extendSubMutation.isPending}>
+                                    {extendSubMutation.isPending ? "Extending..." : "Extend"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                            <Dialog open={editSubOrgId === org.id} onOpenChange={(open) => !open && setEditSubOrgId(null)}>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" onClick={() => { setEditSubOrgId(org.id); setEditSubType(org.subscriptionType || "monthly"); }}>
+                                  <Settings2 className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Manage Subscription</DialogTitle>
+                                  <DialogDescription>Update subscription settings for {org.name}</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="subType">Subscription Type</Label>
+                                    <Select value={editSubType} onValueChange={(value: any) => setEditSubType(value)}>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="monthly">Monthly</SelectItem>
+                                        <SelectItem value="annual">Annual</SelectItem>
+                                        <SelectItem value="indefinite">Indefinite</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="userLimit">User Limit</Label>
+                                    <Input
+                                      id="userLimit"
+                                      type="number"
+                                      min="1"
+                                      value={editUserLimitOrgId === org.id ? editUserLimit : org.userLimit?.toString() || "5"}
+                                      onChange={(e) => { setEditUserLimitOrgId(org.id); setEditUserLimit(e.target.value); }}
+                                    />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button onClick={() => {
+                                    updateSubMutation.mutate({ organizationId: org.id, subscriptionType: editSubType });
+                                    if (editUserLimitOrgId === org.id) {
+                                      updateUserLimitMutation.mutate({ organizationId: org.id, userLimit: parseInt(editUserLimit) });
+                                    }
+                                  }} disabled={updateSubMutation.isPending || updateUserLimitMutation.isPending}>
+                                    {(updateSubMutation.isPending || updateUserLimitMutation.isPending) ? "Saving..." : "Save Changes"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

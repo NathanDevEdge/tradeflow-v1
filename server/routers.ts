@@ -1200,6 +1200,80 @@ ${input.message}
       .mutation(async ({ input }) => {
         return dbHelpers.createOrganization(input.name, input.subscriptionType);
       }),
+
+    updateSubscription: superAdminProcedure
+      .input(z.object({
+        organizationId: z.number(),
+        subscriptionType: z.enum(["monthly", "annual", "indefinite"]),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+        // Calculate new end date based on subscription type
+        let subscriptionEndDate: Date | null = null;
+        if (input.subscriptionType === "monthly") {
+          subscriptionEndDate = new Date();
+          subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+        } else if (input.subscriptionType === "annual") {
+          subscriptionEndDate = new Date();
+          subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
+        }
+
+        await db.update(organizations)
+          .set({ 
+            subscriptionType: input.subscriptionType,
+            subscriptionEndDate,
+            subscriptionStatus: "active",
+          })
+          .where(eq(organizations.id, input.organizationId));
+
+        return { success: true };
+      }),
+
+    extendSubscription: superAdminProcedure
+      .input(z.object({
+        organizationId: z.number(),
+        days: z.number().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+        const org = await db.select().from(organizations).where(eq(organizations.id, input.organizationId)).limit(1);
+        if (org.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+        }
+
+        const currentEndDate = org[0].subscriptionEndDate || new Date();
+        const newEndDate = new Date(currentEndDate);
+        newEndDate.setDate(newEndDate.getDate() + input.days);
+
+        await db.update(organizations)
+          .set({ 
+            subscriptionEndDate: newEndDate,
+            subscriptionStatus: "active",
+          })
+          .where(eq(organizations.id, input.organizationId));
+
+        return { success: true };
+      }),
+
+    updateUserLimit: superAdminProcedure
+      .input(z.object({
+        organizationId: z.number(),
+        userLimit: z.number().min(1),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+        await db.update(organizations)
+          .set({ userLimit: input.userLimit })
+          .where(eq(organizations.id, input.organizationId));
+
+        return { success: true };
+      }),
   }),
 
   // Organization Users router (for org owners to manage their team)

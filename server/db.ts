@@ -1,5 +1,6 @@
 import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from 'mysql2/promise';
 import { 
   InsertUser, 
   users,
@@ -315,8 +316,7 @@ export async function createQuote(quote: typeof quotes.$inferInsert): Promise<Qu
   if (!db) throw new Error("Database not available");
   
   // Use raw SQL to bypass Drizzle ORM issue
-  const mysql = require('mysql2/promise');
-  const conn = await mysql.createConnection(process.env.DATABASE_URL);
+  const conn = await mysql.createConnection(process.env.DATABASE_URL!);
   const [result]: any = await conn.execute(
     `INSERT INTO quotes 
      (organizationId, customerId, quoteNumber, status, totalAmount, totalMargin, marginPercentage, notes, pdfUrl) 
@@ -411,8 +411,7 @@ export async function createPurchaseOrder(po: typeof purchaseOrders.$inferInsert
   if (!db) throw new Error("Database not available");
   
   // Use raw SQL to bypass Drizzle ORM issue
-  const mysql = require('mysql2/promise');
-  const conn = await mysql.createConnection(process.env.DATABASE_URL);
+  const conn = await mysql.createConnection(process.env.DATABASE_URL!);
   const [result]: any = await conn.execute(
     `INSERT INTO purchase_orders 
      (organizationId, supplierId, poNumber, status, deliveryMethod, shippingAddress, totalAmount, notes, pdfUrl) 

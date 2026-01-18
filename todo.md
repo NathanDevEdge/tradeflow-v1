@@ -308,3 +308,13 @@
 - [x] Test after full production deployment (header/totals work, line items missing)
 - [x] Fix PDF line items table not rendering (reset fill color after row backgrounds)
 - [ ] Additional bug fixes and improvements (TBD by user)
+
+## Shipping Address Modal Improvement
+- [x] Create shipping_addresses table (organizationId, attentionTo, streetAddress, state, postcode, country, phoneNumber)
+- [x] Add backend procedures for managing shipping addresses (create, list, get, delete)
+- [x] Create ShippingAddressModal component with form fields
+- [x] Add saved addresses dropdown in modal
+- [x] Add "Add New Address" option
+- [x] Update PO detail page to open modal instead of inline editing
+- [x] Save address only when modal is submitted
+- [ ] Test shipping address workflow

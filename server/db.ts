@@ -12,6 +12,7 @@ import {
   quoteItems,
   purchaseOrders,
   purchaseOrderItems,
+  shippingAddresses,
   type User,
   type Organization,
   type Pricelist,
@@ -22,6 +23,8 @@ import {
   type QuoteItem,
   type PurchaseOrder,
   type PurchaseOrderItem,
+  type ShippingAddress,
+  type InsertShippingAddress,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -505,4 +508,44 @@ export async function getUsersByOrganization(organizationId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.select().from(users).where(eq(users.organizationId, organizationId));
+}
+
+// Shipping address queries
+export async function getShippingAddressesByOrganization(organizationId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(shippingAddresses)
+    .where(eq(shippingAddresses.organizationId, organizationId))
+    .orderBy(desc(shippingAddresses.createdAt));
+}
+
+export async function getShippingAddressById(id: number, organizationId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const results = await db.select().from(shippingAddresses)
+    .where(and(
+      eq(shippingAddresses.id, id),
+      eq(shippingAddresses.organizationId, organizationId)
+    ));
+  return results[0] || null;
+}
+
+export async function createShippingAddress(data: InsertShippingAddress) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(shippingAddresses).values(data);
+  const insertId = Number(result[0].insertId);
+  const created = await getShippingAddressById(insertId, data.organizationId);
+  if (!created) throw new Error("Failed to create shipping address");
+  return created;
+}
+
+export async function deleteShippingAddress(id: number, organizationId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(shippingAddresses)
+    .where(and(
+      eq(shippingAddresses.id, id),
+      eq(shippingAddresses.organizationId, organizationId)
+    ));
 }

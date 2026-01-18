@@ -1405,6 +1405,36 @@ ${input.message}
         return { success: true };
       }),
   }),
+
+  // Shipping addresses router
+  shippingAddresses: router({
+    list: orgProcedure.query(async ({ ctx }) => {
+      return dbHelpers.getShippingAddressesByOrganization(ctx.organizationId);
+    }),
+
+    create: orgProcedure
+      .input(z.object({
+        attentionTo: z.string().optional(),
+        streetAddress: z.string().min(1),
+        state: z.string().optional(),
+        postcode: z.string().optional(),
+        country: z.string().default("Australia"),
+        phoneNumber: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return dbHelpers.createShippingAddress({
+          ...input,
+          organizationId: ctx.organizationId,
+        });
+      }),
+
+    delete: orgProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await dbHelpers.deleteShippingAddress(input.id, ctx.organizationId);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -259,3 +259,24 @@ export const purchaseOrderItems = mysqlTable("purchase_order_items", {
 
 export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type InsertPurchaseOrderItem = typeof purchaseOrderItems.$inferInsert;
+
+/**
+ * Shipping addresses - saved delivery addresses for purchase orders
+ */
+export const shippingAddresses = mysqlTable("shipping_addresses", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull(),
+  attentionTo: varchar("attentionTo", { length: 255 }),
+  streetAddress: text("streetAddress").notNull(),
+  state: varchar("state", { length: 100 }),
+  postcode: varchar("postcode", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("Australia").notNull(),
+  phoneNumber: varchar("phoneNumber", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  organizationIdx: index("shipping_addresses_organization_idx").on(table.organizationId),
+}));
+
+export type ShippingAddress = typeof shippingAddresses.$inferSelect;
+export type InsertShippingAddress = typeof shippingAddresses.$inferInsert;

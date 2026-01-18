@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Plus, Trash2, FileDown, Mail, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileDown, Mail, Search, MapPin } from "lucide-react";
+import { ShippingAddressModal } from "@/components/ShippingAddressModal";
 import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ export default function PurchaseOrderDetailNew() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPricelistId, setSelectedPricelistId] = useState<string>("all");
   const [editingItems, setEditingItems] = useState<Record<number, { quantity: number }>>({});
+  const [shippingModalOpen, setShippingModalOpen] = useState(false);
 
   const { data: purchaseOrder, isLoading } = trpc.purchaseOrders.get.useQuery({ id: poId });
   const { data: supplier } = trpc.suppliers.get.useQuery(
@@ -355,22 +357,35 @@ export default function PurchaseOrderDetailNew() {
               </div>
 
               {purchaseOrder.deliveryMethod === "in_store_delivery" && (
-                <div>
-                  <Label htmlFor="shippingAddress">Shipping Address</Label>
-                  <Textarea
-                    id="shippingAddress"
-                    value={purchaseOrder.shippingAddress || ""}
-                    onChange={(e) => {
-                      updatePOMutation.mutate({
-                        id: poId,
-                        shippingAddress: e.target.value,
-                      });
-                    }}
-                    placeholder="Enter delivery address..."
-                    rows={4}
-                  />
+                <div className="space-y-2">
+                  <Label>Shipping Address</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start text-left h-auto py-3"
+                      onClick={() => setShippingModalOpen(true)}
+                    >
+                      <MapPin className="h-4 w-4 mr-2 shrink-0" />
+                      <span className="whitespace-pre-wrap text-sm">
+                        {purchaseOrder.shippingAddress || "Click to set delivery address"}
+                      </span>
+                    </Button>
+                  </div>
                 </div>
               )}
+
+              <ShippingAddressModal
+                open={shippingModalOpen}
+                onClose={() => setShippingModalOpen(false)}
+                onSave={(address) => {
+                  updatePOMutation.mutate({
+                    id: poId,
+                    shippingAddress: address,
+                  });
+                }}
+                currentAddress={purchaseOrder.shippingAddress || undefined}
+              />
             </div>
           </Card>
         </div>

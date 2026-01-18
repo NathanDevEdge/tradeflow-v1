@@ -1395,6 +1395,36 @@ ${input.message}
       return dbHelpers.getAllUsers();
     }),
 
+    create: superAdminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        name: z.string().min(1),
+        role: z.enum(["user", "org_owner"]),
+        organizationId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        // Check if user already exists
+        const existingUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        if (existingUser.length > 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "User with this email already exists" });
+        }
+
+        // Create new user
+        await db.insert(users).values({
+          email: input.email,
+          name: input.name,
+          role: input.role,
+          organizationId: input.organizationId,
+          loginMethod: "email",
+          status: "pending",
+        });
+
+        return { email: input.email };
+      }),
+
     assignToOrganization: superAdminProcedure
       .input(z.object({ 
         userId: z.number(), 
@@ -1402,6 +1432,26 @@ ${input.message}
       }))
       .mutation(async ({ input }) => {
         await dbHelpers.assignUserToOrganization(input.userId, input.organizationId);
+        return { success: true };
+      }),
+
+    updateOrganization: superAdminProcedure
+      .input(z.object({ 
+        userId: z.number(), 
+        organizationId: z.number() 
+      }))
+      .mutation(async ({ input }) => {
+        await dbHelpers.assignUserToOrganization(input.userId, input.organizationId);
+        return { success: true };
+      }),
+
+    delete: superAdminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        
+        await db.delete(users).where(eq(users.id, input.userId));
         return { success: true };
       }),
   }),

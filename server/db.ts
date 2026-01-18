@@ -317,7 +317,7 @@ export async function createQuote(quote: typeof quotes.$inferInsert): Promise<Qu
   
   // Use raw SQL to bypass Drizzle ORM issue
   const conn = await mysql.createConnection(process.env.DATABASE_URL!);
-  const [result]: any = await conn.execute(
+  const [result]: any = await conn.query(
     `INSERT INTO quotes 
      (organizationId, customerId, quoteNumber, status, totalAmount, totalMargin, marginPercentage, notes, pdfUrl) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -410,27 +410,35 @@ export async function createPurchaseOrder(po: typeof purchaseOrders.$inferInsert
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  console.log('[DB createPurchaseOrder] Received po:', JSON.stringify(po));
+  console.log('[DB createPurchaseOrder] po.poNumber:', po.poNumber);
+  
   // Use raw SQL to bypass Drizzle ORM issue
   const conn = await mysql.createConnection(process.env.DATABASE_URL!);
-  const [result]: any = await conn.execute(
+  
+  const params = [
+    po.organizationId,
+    po.supplierId,
+    po.poNumber,
+    po.status || 'draft',
+    po.deliveryMethod || 'pickup_from_supplier',
+    po.shippingAddress || null,
+    po.totalAmount || '0',
+    po.notes || null,
+    po.pdfUrl || null
+  ];
+  
+  console.log('[DB createPurchaseOrder] SQL params:', JSON.stringify(params));
+  
+  const [result]: any = await conn.query(
     `INSERT INTO purchase_orders 
      (organizationId, supplierId, poNumber, status, deliveryMethod, shippingAddress, totalAmount, notes, pdfUrl) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      po.organizationId,
-      po.supplierId,
-      po.poNumber,
-      po.status || 'draft',
-      po.deliveryMethod || 'pickup_from_supplier',
-      po.shippingAddress || null,
-      po.totalAmount || '0',
-      po.notes || null,
-      po.pdfUrl || null
-    ]
-  );
+    params
+   );
   await conn.end();
   
-  const insertedId = Number(result[0].insertId);
+  const insertedId = Number(result.insertId);
   const created = await getPurchaseOrderById(insertedId, po.organizationId!);
   if (!created) throw new Error("Failed to retrieve created purchase order");
   return created;

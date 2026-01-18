@@ -44,31 +44,7 @@ export async function registerUser(
   // Hash password
   const passwordHash = await hashPassword(password);
 
-  // Check if there's an invitation token
-  let subscriptionType: "monthly" | "annual" | "indefinite" | null = null;
-  let subscriptionEndDate: Date | null = null;
-  let subscriptionStatus: "active" | "expired" | "cancelled" = "active";
-
-  if (invitationToken) {
-    const { getInvitationByToken, markInvitationAsUsed, calculateSubscriptionEndDate } = await import("./admin");
-    const invitation = await getInvitationByToken(invitationToken);
-    
-    if (!invitation) {
-      throw new Error("Invalid or expired invitation token");
-    }
-    
-    if (invitation.email !== email) {
-      throw new Error("This invitation was sent to a different email address");
-    }
-    
-    subscriptionType = invitation.subscriptionType;
-    subscriptionEndDate = calculateSubscriptionEndDate(invitation.subscriptionType);
-    
-    // Mark invitation as used
-    await markInvitationAsUsed(invitationToken);
-  }
-
-  // Create user
+  // Create user (subscription is now managed at organization level)
   const result = await database.insert(users).values({
     email,
     passwordHash,
@@ -76,9 +52,7 @@ export async function registerUser(
     loginMethod: "email",
     role: "user",
     status: "active",
-    subscriptionType,
-    subscriptionEndDate,
-    subscriptionStatus,
+    organizationId: null, // Will be assigned by super admin
   });
 
   return result;

@@ -13,8 +13,6 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminLogin from "./pages/AdminLogin";
-import AdminPanel from "./pages/AdminPanel";
-import AdminOrganizations from "./pages/AdminOrganizations";
 import SuperAdminPanel from "./pages/SuperAdminPanel";
 import ContactInbox from "./pages/ContactInbox";
 import Pricelists from "./pages/Pricelists";
@@ -69,17 +67,11 @@ function Router() {
       <Route path="/dashboard">
         {() => <ProtectedRoute component={Home} />}
       </Route>
-      <Route path="/admin/panel">
-        {() => <ProtectedRoute component={AdminPanel} />}
-      </Route>
       <Route path="/admin/super">
         {() => <ProtectedRoute component={SuperAdminPanel} />}
       </Route>
       <Route path="/admin/contacts">
         {() => <ProtectedRoute component={ContactInbox} />}
-      </Route>
-      <Route path="/admin/organizations">
-        {() => <ProtectedRoute component={AdminOrganizations} />}
       </Route>
       <Route path="/pricelists">
         {() => <ProtectedRoute component={Pricelists} />}

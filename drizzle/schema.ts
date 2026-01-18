@@ -6,6 +6,10 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, index } 
 export const organizations = mysqlTable("organizations", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]).default("monthly"),
+  subscriptionEndDate: timestamp("subscriptionEndDate"),
+  subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "expired", "cancelled"]).default("active"),
+  userLimit: int("userLimit").default(5).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -27,9 +31,6 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }), // 'oauth' or 'email'
   role: mysqlEnum("role", ["user", "org_owner", "admin", "super_admin"]).default("user").notNull(),
   status: mysqlEnum("status", ["active", "inactive", "pending"]).default("active").notNull(),
-  subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]),
-  subscriptionEndDate: timestamp("subscriptionEndDate"),
-  subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "expired", "cancelled"]).default("active"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn"),
@@ -93,7 +94,6 @@ export const userInvitations = mysqlTable("user_invitations", {
   email: varchar("email", { length: 320 }).notNull(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   invitedBy: int("invitedBy").notNull(), // Admin user ID
-  subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]).notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   used: int("used").default(0).notNull(), // 0 = unused, 1 = used
   createdAt: timestamp("createdAt").defaultNow().notNull(),

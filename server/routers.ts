@@ -9,7 +9,7 @@ import { orgProcedure } from "./organizationMiddleware";
 import { z } from "zod";
 import * as dbHelpers from "./db";
 import { getDb } from "./db";
-import { users } from "../drizzle/schema";
+import { users, organizations } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdfgen"; // v2.0 PDF fixes - RENAMED MODULE
 import { sendPurchaseOrderEmail } from "./email";
@@ -64,13 +64,7 @@ function parseDecimal(value: string | undefined): string | undefined {
   return isNaN(parsed) ? undefined : parsed.toFixed(2);
 }
 
-// Admin-only procedure
-const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin" && ctx.user.role !== "super_admin") {
-    throw new Error("Admin access required");
-  }
-  return next({ ctx });
-});
+// Removed old adminProcedure - now using superAdminProcedure from organizationMiddleware
 
 const superAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "super_admin") {
@@ -90,68 +84,7 @@ const orgOwnerProcedure = protectedProcedure.use(({ ctx, next }) => {
 });
 
 export const appRouter = router({
-  admin: router({
-    getAllUsers: adminProcedure.query(async ({ ctx }) => {
-      const allUsers = await admin.getAllUsers();
-      return allUsers.map(user => ({
-        ...user,
-        daysRemaining: admin.calculateDaysRemaining(user.subscriptionEndDate),
-      }));
-    }),
-
-    inviteUser: adminProcedure
-      .input(z.object({
-        email: z.string().email(),
-        subscriptionType: z.enum(["monthly", "annual", "indefinite"]),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const { token, inviteUrl } = await admin.createUserInvitation(
-          input.email,
-          input.subscriptionType,
-          ctx.user.id
-        );
-        return { success: true, inviteUrl, token };
-      }),
-
-    updateSubscription: adminProcedure
-      .input(z.object({
-        userId: z.number(),
-        subscriptionType: z.enum(["monthly", "annual", "indefinite"]),
-        subscriptionStatus: z.enum(["active", "expired", "cancelled"]),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        await admin.updateUserSubscription(
-          input.userId,
-          input.subscriptionType,
-          input.subscriptionStatus
-        );
-        return { success: true };
-      }),
-
-    extendSubscription: adminProcedure
-      .input(z.object({
-        userId: z.number(),
-        days: z.number().min(1),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        await admin.extendSubscription(input.userId, input.days);
-        return { success: true };
-      }),
-
-    getPendingInvitations: adminProcedure.query(async ({ ctx }) => {
-      return await admin.getPendingInvitations();
-    }),
-
-    deleteUser: adminProcedure
-      .input(z.object({ userId: z.number() }))
-      .mutation(async ({ input, ctx }) => {
-        const database = await getDb();
-        if (!database) throw new Error("Database not available");
-        
-        await database.delete(users).where(eq(users.id, input.userId));
-        return { success: true };
-      }),
-  }),
+  // Removed old admin router - subscriptions now managed at organization level in Super Admin panel
 
   customAuth: router({
     register: publicProcedure
@@ -1170,13 +1103,13 @@ export const appRouter = router({
   }),
 
   contact: router({
-    list: adminProcedure.query(async ({ ctx }) => {
+    list: superAdminProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       return await db.select().from(contactInquiries).orderBy(contactInquiries.createdAt);
     }),
 
-    updateStatus: adminProcedure
+    updateStatus: superAdminProcedure
       .input(
         z.object({
           id: z.number(),
@@ -1190,7 +1123,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: adminProcedure
+    delete: superAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -1199,7 +1132,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-      submit: publicProcedure
+    submit: publicProcedure
       .input(
         z.object({
           name: z.string().min(1, "Name is required"),
@@ -1260,9 +1193,12 @@ ${input.message}
     }),
 
     create: superAdminProcedure
-      .input(z.object({ name: z.string().min(1) }))
+      .input(z.object({ 
+        name: z.string().min(1),
+        subscriptionType: z.enum(["monthly", "annual", "indefinite"]).default("monthly"),
+      }))
       .mutation(async ({ input }) => {
-        return dbHelpers.createOrganization(input.name);
+        return dbHelpers.createOrganization(input.name, input.subscriptionType);
       }),
   }),
 
@@ -1410,6 +1346,20 @@ ${input.message}
         const existingUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         if (existingUser.length > 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "User with this email already exists" });
+        }
+
+        // Check organization user limit
+        const org = await db.select().from(organizations).where(eq(organizations.id, input.organizationId)).limit(1);
+        if (org.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+        }
+        
+        const currentUserCount = await db.select().from(users).where(eq(users.organizationId, input.organizationId));
+        if (currentUserCount.length >= org[0].userLimit) {
+          throw new TRPCError({ 
+            code: "BAD_REQUEST", 
+            message: `Organization has reached its user limit of ${org[0].userLimit} users` 
+          });
         }
 
         // Create new user

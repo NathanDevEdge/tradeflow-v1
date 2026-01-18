@@ -332,3 +332,15 @@
 - [x] Add ability to create organization + invite users in one flow
 - [x] Show organization membership in user list
 - [ ] Test complete workflow: create org → invite user → user registers → user has access
+
+## Organization-Based Subscription Model
+- [x] Move subscription fields from users table to organizations table (subscriptionType, subscriptionStatus, subscriptionEndDate)
+- [x] Add userLimit field to organizations table (default 5)
+- [x] Remove subscription fields from users table
+- [x] Update organization middleware to check organization subscription status
+- [x] Add validation to prevent adding users beyond organization user limit
+- [x] Update admin panel to manage organization subscriptions instead of user subscriptions
+- [x] Migrate existing subscription data from users to organizations
+- [x] Update all subscription-related queries and procedures
+- [ ] Test user limit enforcement
+- [ ] Test subscription status checks

@@ -481,10 +481,31 @@ export async function getOrganizationById(id: number): Promise<Organization | un
   return result[0];
 }
 
-export async function createOrganization(name: string): Promise<Organization> {
+export async function createOrganization(
+  name: string, 
+  subscriptionType: "monthly" | "annual" | "indefinite" = "monthly"
+): Promise<Organization> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(organizations).values({ name });
+  
+  // Calculate subscription end date
+  let subscriptionEndDate: Date | null = null;
+  if (subscriptionType === "monthly") {
+    subscriptionEndDate = new Date();
+    subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+  } else if (subscriptionType === "annual") {
+    subscriptionEndDate = new Date();
+    subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1);
+  }
+  // indefinite = null (no end date)
+  
+  const result = await db.insert(organizations).values({ 
+    name,
+    subscriptionType,
+    subscriptionEndDate,
+    subscriptionStatus: "active",
+    userLimit: 5,
+  });
   const insertId = Number(result[0].insertId);
   const created = await getOrganizationById(insertId);
   if (!created) throw new Error("Failed to create organization");

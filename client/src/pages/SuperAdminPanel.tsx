@@ -37,6 +37,7 @@ import { Building2, UserPlus, Users, Trash2 } from "lucide-react";
 export default function SuperAdminPanel() {
   const [isCreateOrgDialogOpen, setIsCreateOrgDialogOpen] = useState(false);
   const [orgName, setOrgName] = useState("");
+  const [orgSubscriptionType, setOrgSubscriptionType] = useState<"monthly" | "annual" | "indefinite">("monthly");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -50,6 +51,7 @@ export default function SuperAdminPanel() {
     onSuccess: () => {
       toast.success("Organization created successfully");
       setOrgName("");
+      setOrgSubscriptionType("monthly");
       setIsCreateOrgDialogOpen(false);
       refetchOrgs();
     },
@@ -96,7 +98,7 @@ export default function SuperAdminPanel() {
       toast.error("Please enter an organization name");
       return;
     }
-    createOrgMutation.mutate({ name: orgName });
+    createOrgMutation.mutate({ name: orgName, subscriptionType: orgSubscriptionType });
   };
 
   const handleInviteUser = () => {
@@ -181,6 +183,22 @@ export default function SuperAdminPanel() {
                         onChange={(e) => setOrgName(e.target.value)}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="subscriptionType">Subscription Type</Label>
+                      <Select
+                        value={orgSubscriptionType}
+                        onValueChange={(value: any) => setOrgSubscriptionType(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="annual">Annual</SelectItem>
+                          <SelectItem value="indefinite">Indefinite</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button onClick={handleCreateOrg} disabled={createOrgMutation.isPending}>
@@ -202,8 +220,10 @@ export default function SuperAdminPanel() {
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Subscription</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Users</TableHead>
+                      <TableHead>Created</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -211,12 +231,20 @@ export default function SuperAdminPanel() {
                       <TableRow key={org.id}>
                         <TableCell className="font-mono">{org.id}</TableCell>
                         <TableCell className="font-medium">{org.name}</TableCell>
-                        <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {allUsers?.filter(u => u.organizationId === org.id).length || 0} users
+                          <span className="capitalize">{org.subscriptionType || "monthly"}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={org.subscriptionStatus === "active" ? "default" : "destructive"}>
+                            {org.subscriptionStatus || "active"}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {allUsers?.filter(u => u.organizationId === org.id).length || 0} / {org.userLimit || 5}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

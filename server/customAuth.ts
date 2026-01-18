@@ -37,14 +37,32 @@ export async function registerUser(
 
   // Check if user already exists
   const existingUser = await db.getUserByEmail(email);
+  
   if (existingUser) {
-    throw new Error("User with this email already exists");
+    // If user exists with status "pending", allow them to complete registration
+    if (existingUser.status === "pending") {
+      const passwordHash = await hashPassword(password);
+      
+      // Update existing pending user with password and activate
+      await database.update(users)
+        .set({
+          passwordHash,
+          name: name || existingUser.name,
+          status: "active",
+        })
+        .where(eq(users.id, existingUser.id));
+      
+      return { insertId: existingUser.id };
+    }
+    
+    // If user is already active, they should login instead
+    throw new Error("User with this email already exists. Please login instead.");
   }
 
   // Hash password
   const passwordHash = await hashPassword(password);
 
-  // Create user (subscription is now managed at organization level)
+  // Create new user (subscription is now managed at organization level)
   const result = await database.insert(users).values({
     email,
     passwordHash,

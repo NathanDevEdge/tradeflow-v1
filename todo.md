@@ -352,3 +352,9 @@
 - [x] Add "Change User Limit" input to adjust max users per organization
 - [x] Add backend procedures for updating subscription settings
 - [ ] Test subscription extension and type changes
+
+## User Registration Flow Fix
+- [x] Update registration logic to allow pending users to complete registration
+- [x] Check if user exists with status "pending" → allow password setup
+- [x] Check if user exists with status "active" → show "please login" error
+- [ ] Test admin-created user can complete registration

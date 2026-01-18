@@ -11,7 +11,7 @@ import * as dbHelpers from "./db";
 import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
-import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdf";
+import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdfgen"; // v2.0 PDF fixes - RENAMED MODULE
 import { sendPurchaseOrderEmail } from "./email";
 import * as customAuth from "./customAuth";
 import * as admin from "./admin";

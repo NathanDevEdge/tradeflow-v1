@@ -300,3 +300,10 @@
 - [x] Add Admin Panel link to navigation (visible only for super_admin)
 - [ ] Test organization management access
 - [ ] Test user management across organizations
+
+## Production Readiness (Priority: HIGH - 2 hour deadline)
+- [x] Fix PDF layout code - prices cut off on right side (completely rewrote pdfgen.ts)
+- [x] Fix PDF A4 page formatting and margins (correct coordinates applied)
+- [x] Renamed module to pdfgen.ts to force cache clear
+- [ ] Test after full production deployment
+- [ ] Additional bug fixes and improvements (TBD by user)

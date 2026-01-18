@@ -26,6 +26,7 @@ import QuoteDetail from "./pages/QuoteDetail";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PurchaseOrderDetailNew from "./pages/PurchaseOrderDetailNew";
 import Settings from "./pages/Settings";
+import TeamManagement from "./pages/TeamManagement";
 import OrganizationUsers from "./pages/OrganizationUsers";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
@@ -100,8 +101,15 @@ function Router() {
       <Route path="/purchase-orders">
         {() => <ProtectedRoute component={PurchaseOrders} />}
       </Route>
-      <Route path="/purchase-orders/:id" component={() => <ProtectedRoute component={PurchaseOrderDetailNew} />} />
-      <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+      <Route path="/purchase-orders/:id">
+        {(params) => <ProtectedRoute component={PurchaseOrderDetailNew} {...params} />}
+      </Route>
+      <Route path="/settings">
+        {() => <ProtectedRoute component={Settings} />}
+      </Route>
+      <Route path="/team">
+        {() => <ProtectedRoute component={TeamManagement} />}
+      </Route>
       <Route path="/organization/users" component={() => <ProtectedRoute component={OrganizationUsers} />} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

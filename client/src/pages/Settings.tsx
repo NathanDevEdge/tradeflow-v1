@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { storagePut } from "../../../server/storage";
-import { Upload, Building2 } from "lucide-react";
+import { Upload, Building2, Lock } from "lucide-react";
 
 export default function Settings() {
   const { data: settings, isLoading } = trpc.companySettings.get.useQuery();
@@ -20,6 +20,11 @@ export default function Settings() {
   const [email, setEmail] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   
   // Initialize form when settings load
   useEffect(() => {
@@ -54,6 +59,18 @@ export default function Settings() {
     });
   };
   
+  const changePasswordMutation = trpc.profile.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password changed successfully");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+  
   const uploadLogoMutation = trpc.companySettings.uploadLogo.useMutation({
     onSuccess: (data) => {
       setLogoUrl(data.url);
@@ -64,6 +81,28 @@ export default function Settings() {
       toast.error(error.message);
     },
   });
+  
+  const handleChangePassword = () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    changePasswordMutation.mutate({
+      currentPassword,
+      newPassword,
+    });
+  };
   
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -228,6 +267,59 @@ export default function Settings() {
                 disabled={upsertMutation.isPending}
               >
                 {upsertMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Password Change */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Update your password to keep your account secure
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min 8 characters)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button 
+                onClick={handleChangePassword} 
+                disabled={changePasswordMutation.isPending}
+              >
+                {changePasswordMutation.isPending ? "Changing Password..." : "Change Password"}
               </Button>
             </div>
           </CardContent>

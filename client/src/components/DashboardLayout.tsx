@@ -36,6 +36,7 @@ const menuItems = [
   { icon: FileCheck, label: "Purchase Orders", path: "/purchase-orders", adminOnly: false, orgOwnerOnly: false, superAdminOnly: false },
   { icon: Settings, label: "Settings", path: "/settings", adminOnly: false, orgOwnerOnly: false, superAdminOnly: false },
   { icon: UserCog, label: "Team Members", path: "/organization/users", adminOnly: false, orgOwnerOnly: true, superAdminOnly: false },
+  { icon: Users, label: "Team Management", path: "/team", adminOnly: false, orgOwnerOnly: true, superAdminOnly: false },
   { icon: Shield, label: "Super Admin", path: "/admin/super", adminOnly: false, orgOwnerOnly: false, superAdminOnly: true },
   { icon: Mail, label: "Contact Inbox", path: "/admin/contacts", adminOnly: true, orgOwnerOnly: false, superAdminOnly: false },
 ];

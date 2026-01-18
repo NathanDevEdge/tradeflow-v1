@@ -358,3 +358,13 @@
 - [x] Check if user exists with status "pending" → allow password setup
 - [x] Check if user exists with status "active" → show "please login" error
 - [ ] Test admin-created user can complete registration
+
+## Password Management
+- [x] Create User Settings page accessible from dashboard
+- [x] Add "Change Password" form (current password + new password + confirm)
+- [x] Add backend procedure for user to change their own password
+- [x] Add org owner view to see team members
+- [x] Add "Reset Password" button for org owners (generates temp password or reset link)
+- [x] Add backend procedure for org owners to reset user passwords
+- [ ] Test user can change own password
+- [ ] Test org owner can reset team member passwords

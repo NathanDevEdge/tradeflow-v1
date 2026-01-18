@@ -86,6 +86,37 @@ const orgOwnerProcedure = protectedProcedure.use(({ ctx, next }) => {
 export const appRouter = router({
   // Removed old admin router - subscriptions now managed at organization level in Super Admin panel
 
+  profile: router({
+    changePassword: protectedProcedure
+      .input(z.object({
+        currentPassword: z.string(),
+        newPassword: z.string().min(8, "Password must be at least 8 characters"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Verify current password
+        const user = await dbHelpers.getUserByEmail(ctx.user.email);
+        if (!user || !user.passwordHash) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot change password for OAuth users" });
+        }
+
+        const isValid = await customAuth.verifyPassword(input.currentPassword, user.passwordHash);
+        if (!isValid) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Current password is incorrect" });
+        }
+
+        // Hash and update new password
+        const newPasswordHash = await customAuth.hashPassword(input.newPassword);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+        await db.update(users)
+          .set({ passwordHash: newPasswordHash })
+          .where(eq(users.id, ctx.user.id));
+
+        return { success: true };
+      }),
+  }),
+
   customAuth: router({
     register: publicProcedure
       .input(z.object({
@@ -1282,6 +1313,34 @@ ${input.message}
       return dbHelpers.getUsersByOrganization(ctx.organizationId);
     }),
 
+    resetPassword: orgOwnerProcedure
+      .input(z.object({
+        userId: z.number(),
+        newPassword: z.string().min(8, "Password must be at least 8 characters"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+        // Verify user belongs to the same organization
+        const targetUser = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
+        if (targetUser.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+
+        if (targetUser[0].organizationId !== ctx.organizationId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot reset password for users outside your organization" });
+        }
+
+        // Hash and update password
+        const newPasswordHash = await customAuth.hashPassword(input.newPassword);
+        await db.update(users)
+          .set({ passwordHash: newPasswordHash, status: "active" })
+          .where(eq(users.id, input.userId));
+
+        return { success: true };
+      }),
+
     invite: orgOwnerProcedure
       .input(z.object({
         email: z.string().email(),
@@ -1348,29 +1407,6 @@ ${input.message}
         }
 
         await db.update(users).set({ role: input.role }).where(eq(users.id, input.userId));
-        return { success: true };
-      }),
-
-    resetPassword: orgOwnerProcedure
-      .input(z.object({
-        userId: z.number(),
-        newPassword: z.string().min(8),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-        
-        // Verify user belongs to the same organization
-        const targetUser = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
-        if (targetUser.length === 0 || targetUser[0].organizationId !== ctx.organizationId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot modify user from different organization" });
-        }
-
-        // Hash password (you'll need to import bcrypt or similar)
-        const bcrypt = require("bcrypt");
-        const passwordHash = await bcrypt.hash(input.newPassword, 10);
-        
-        await db.update(users).set({ passwordHash }).where(eq(users.id, input.userId));
         return { success: true };
       }),
 

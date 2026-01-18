@@ -305,5 +305,6 @@
 - [x] Fix PDF layout code - prices cut off on right side (completely rewrote pdfgen.ts)
 - [x] Fix PDF A4 page formatting and margins (correct coordinates applied)
 - [x] Renamed module to pdfgen.ts to force cache clear
-- [ ] Test after full production deployment
+- [x] Test after full production deployment (header/totals work, line items missing)
+- [x] Fix PDF line items table not rendering (reset fill color after row backgrounds)
 - [ ] Additional bug fixes and improvements (TBD by user)

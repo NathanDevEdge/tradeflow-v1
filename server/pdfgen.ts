@@ -150,7 +150,6 @@ function drawItemsTable(
   y += 30;
   
   // Table rows
-  doc.fontSize(10).font(FONTS.regular).fill(COLORS.text);
   items.forEach((item, index) => {
     // Alternate row background
     if (index % 2 === 0) {
@@ -159,6 +158,8 @@ function drawItemsTable(
       doc.rect(tableX, y, tableWidth, 30).fill("#fafafa");
     }
     
+    // Reset text styling for each row
+    doc.fontSize(10).font(FONTS.regular).fill(COLORS.text);
     rowRenderer(item, tableX, y, columns);
     y += 30;
   });

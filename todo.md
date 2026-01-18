@@ -368,3 +368,8 @@
 - [x] Add backend procedure for org owners to reset user passwords
 - [ ] Test user can change own password
 - [ ] Test org owner can reset team member passwords
+
+## Purchase Order Multi-Tenant Bug Fix
+- [ ] Fix purchase order creation to include organizationId from context
+- [ ] Ensure all PO queries filter by organizationId
+- [ ] Test PO creation in new organization

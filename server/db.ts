@@ -313,9 +313,30 @@ export async function getQuoteById(id: number, organizationId: number): Promise<
 export async function createQuote(quote: typeof quotes.$inferInsert): Promise<Quote> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(quotes).values(quote);
-  const insertedId = Number(result[0].insertId);
-  const created = await getQuoteById(insertedId, quote.organizationId);
+  
+  // Use raw SQL to bypass Drizzle ORM issue
+  const mysql = require('mysql2/promise');
+  const conn = await mysql.createConnection(process.env.DATABASE_URL);
+  const [result]: any = await conn.execute(
+    `INSERT INTO quotes 
+     (organizationId, customerId, quoteNumber, status, totalAmount, totalMargin, marginPercentage, notes, pdfUrl) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      quote.organizationId,
+      quote.customerId,
+      quote.quoteNumber,
+      quote.status || 'draft',
+      quote.totalAmount || '0',
+      quote.totalMargin || '0',
+      quote.marginPercentage || '0',
+      quote.notes || null,
+      quote.pdfUrl || null
+    ]
+  );
+  await conn.end();
+  
+  const insertedId = Number(result.insertId);
+  const created = await getQuoteById(insertedId, quote.organizationId!);
   if (!created) throw new Error("Failed to retrieve created quote");
   return created;
 }
@@ -388,9 +409,30 @@ export async function getPurchaseOrderById(id: number, organizationId: number): 
 export async function createPurchaseOrder(po: typeof purchaseOrders.$inferInsert): Promise<PurchaseOrder> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(purchaseOrders).values(po);
+  
+  // Use raw SQL to bypass Drizzle ORM issue
+  const mysql = require('mysql2/promise');
+  const conn = await mysql.createConnection(process.env.DATABASE_URL);
+  const [result]: any = await conn.execute(
+    `INSERT INTO purchase_orders 
+     (organizationId, supplierId, poNumber, status, deliveryMethod, shippingAddress, totalAmount, notes, pdfUrl) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      po.organizationId,
+      po.supplierId,
+      po.poNumber,
+      po.status || 'draft',
+      po.deliveryMethod || 'pickup_from_supplier',
+      po.shippingAddress || null,
+      po.totalAmount || '0',
+      po.notes || null,
+      po.pdfUrl || null
+    ]
+  );
+  await conn.end();
+  
   const insertedId = Number(result[0].insertId);
-  const created = await getPurchaseOrderById(insertedId, po.organizationId);
+  const created = await getPurchaseOrderById(insertedId, po.organizationId!);
   if (!created) throw new Error("Failed to retrieve created purchase order");
   return created;
 }

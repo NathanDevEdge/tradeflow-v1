@@ -758,16 +758,28 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        console.log('[PO CREATE] Context:', { userId: ctx.user?.id, organizationId: ctx.organizationId });
+        console.log('[PO CREATE] Input:', input);
+        
         // Generate PO number
         const allPOs = await dbHelpers.getAllPurchaseOrders(ctx.organizationId);
         const poNumber = `PO${String(allPOs.length + 1).padStart(5, '0')}`;
         
-        return await dbHelpers.createPurchaseOrder({
+        const poData = {
+          organizationId: ctx.organizationId,
           supplierId: input.supplierId,
           poNumber,
+          status: "draft" as const,
+          deliveryMethod: "pickup_from_supplier" as const,
+          shippingAddress: null,
+          totalAmount: "0",
           notes: input.notes || null,
-          organizationId: ctx.organizationId,
-        });
+          pdfUrl: null,
+        };
+        
+        console.log('[PO CREATE] Creating PO with data:', poData);
+        
+        return await dbHelpers.createPurchaseOrder(poData);
       }),
     
     update: orgProcedure

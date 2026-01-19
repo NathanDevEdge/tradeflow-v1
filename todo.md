@@ -377,3 +377,7 @@
 ## Branding Update
 - [x] Replace favicon with DevEdge Solutions logo
 - [x] Replace TradeFlow icon with DevEdge Solutions logo in sidebar
+
+## PDF Generation Fixes (Round 2)
+- [x] Fix supplier billing address formatting - address lines running together (33 Brooklyn Ave, email, VIC 3175 should be on separate lines)
+- [x] Display company logo from settings in PDF header

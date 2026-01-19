@@ -31,12 +31,31 @@ async function drawPremiumHeader(
   // Header background bar
   doc.rect(0, 0, 612, 120).fill(COLORS.primary);
   
-  // Company logo placeholder
+  // Company logo
   if (settings?.logoUrl) {
     try {
-      doc.rect(50, 30, 80, 60).stroke("#ffffff");
+      // Fetch the logo image
+      const response = await fetch(settings.logoUrl);
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+      
+      // Draw the logo (auto-detect format from URL)
+      const logoX = 50;
+      const logoY = 30;
+      const logoWidth = 80;
+      const logoHeight = 60;
+      
+      if (settings.logoUrl.toLowerCase().endsWith('.png')) {
+        doc.image(imageBuffer, logoX, logoY, { width: logoWidth, height: logoHeight, fit: [logoWidth, logoHeight] });
+      } else if (settings.logoUrl.toLowerCase().match(/\.(jpg|jpeg)$/)) {
+        doc.image(imageBuffer, logoX, logoY, { width: logoWidth, height: logoHeight, fit: [logoWidth, logoHeight] });
+      } else {
+        // Fallback to placeholder box if format unknown
+        doc.rect(logoX, logoY, logoWidth, logoHeight).stroke("#ffffff");
+      }
     } catch (error) {
       console.warn("Could not load company logo:", error);
+      // Draw placeholder box on error
+      doc.rect(50, 30, 80, 60).stroke("#ffffff");
     }
   }
   
@@ -104,12 +123,15 @@ function drawRecipientCard(
   doc.fontSize(11).font(FONTS.bold).fill(COLORS.text);
   doc.text(name, x + 15, y + 30);
   
-  // Address
+  // Address - split by newlines for proper formatting
   doc.fontSize(9).font(FONTS.regular).fill(COLORS.secondary);
   let detailY = y + 45;
   if (address) {
-    doc.text(address, x + 15, detailY);
-    detailY += 12;
+    const addressLines = address.split("\n").filter(line => line.trim());
+    addressLines.forEach(line => {
+      doc.text(line.trim(), x + 15, detailY);
+      detailY += 12;
+    });
   }
   if (email) {
     doc.text(email, x + 15, detailY);

@@ -381,3 +381,7 @@
 ## PDF Generation Fixes (Round 2)
 - [x] Fix supplier billing address formatting - address lines running together (33 Brooklyn Ave, email, VIC 3175 should be on separate lines)
 - [x] Display company logo from settings in PDF header
+
+## PDF Download Security & UX
+- [x] Add meaningful PDF filenames (PO00001-SupplierName-2026-01-18.pdf format)
+- [x] Add secure non-guessable S3 paths with organization identifiers to prevent URL enumeration

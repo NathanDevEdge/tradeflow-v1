@@ -367,8 +367,18 @@ export async function generateQuotePDF(quoteId: number, organizationId: number):
   });
   
   const pdfBuffer = Buffer.concat(chunks);
-  const fileName = `quote-${quote.quoteNumber}-${Date.now()}.pdf`;
-  const { url } = await storagePut(fileName, pdfBuffer, "application/pdf");
+  
+  // Generate meaningful filename: Q00001-CustomerName-2026-01-18.pdf
+  const customerNameSlug = customer.companyName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+  const dateStr = new Date().toISOString().split('T')[0];
+  const downloadFilename = `${quote.quoteNumber}-${customerNameSlug}-${dateStr}.pdf`;
+  
+  // Generate secure S3 path with org identifier to prevent URL guessing
+  // Format: pdfs/{orgId}-{randomHash}/{filename}
+  const orgHash = Math.random().toString(36).substring(2, 10);
+  const fileKey = `pdfs/${organizationId}-${orgHash}/${downloadFilename}`;
+  
+  const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
   
   return url;
 }
@@ -510,8 +520,18 @@ export async function generatePurchaseOrderPDF(poId: number, organizationId: num
   });
   
   const pdfBuffer = Buffer.concat(chunks);
-  const fileName = `po-${po.poNumber}-${Date.now()}.pdf`;
-  const { url } = await storagePut(fileName, pdfBuffer, "application/pdf");
+  
+  // Generate meaningful filename: PO00001-SupplierName-2026-01-18.pdf
+  const supplierNameSlug = supplier.companyName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+  const dateStr = new Date().toISOString().split('T')[0];
+  const downloadFilename = `${po.poNumber}-${supplierNameSlug}-${dateStr}.pdf`;
+  
+  // Generate secure S3 path with org identifier to prevent URL guessing
+  // Format: pdfs/{orgId}-{randomHash}/{filename}
+  const orgHash = Math.random().toString(36).substring(2, 10);
+  const fileKey = `pdfs/${organizationId}-${orgHash}/${downloadFilename}`;
+  
+  const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
   
   return url;
 }

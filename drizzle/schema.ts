@@ -79,6 +79,15 @@ export const companySettings = mysqlTable("company_settings", {
   phone: varchar("phone", { length: 50 }),
   email: varchar("email", { length: 320 }),
   logoUrl: text("logo_url"),
+  // Optional SMTP settings — if configured, PO emails send directly from the org's email address.
+  // If not set, falls back to TradeFlow's Resend account with the org name as display name.
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: int("smtp_port").default(587),
+  smtpUser: varchar("smtp_user", { length: 320 }),
+  smtpPassword: varchar("smtp_password", { length: 500 }),
+  smtpFromEmail: varchar("smtp_from_email", { length: 320 }),
+  smtpFromName: varchar("smtp_from_name", { length: 255 }),
+  smtpSecure: int("smtp_secure").default(0), // 0 = STARTTLS (port 587), 1 = SSL (port 465)
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

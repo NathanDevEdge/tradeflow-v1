@@ -168,8 +168,8 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         try {
           const token = await customAuth.createPasswordResetToken(input.email);
-          // TODO: Send email with reset link containing token
-          console.log(`[Password Reset] Token for ${input.email}: ${token}`);
+          const { sendPasswordResetEmail } = await import("./email");
+          await sendPasswordResetEmail({ email: input.email, token });
           return { success: true };
         } catch (error: any) {
           // Don't reveal if email exists

@@ -38,15 +38,15 @@ export default function ContactInbox() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "new":
-        return "bg-blue-100 text-blue-800";
+        return "bg-primary/10 text-primary";
       case "contacted":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-amber-100 text-amber-800";
       case "converted":
-        return "bg-green-100 text-green-800";
+        return "bg-primary/15 text-primary";
       case "archived":
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-muted-foreground";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-muted-foreground";
     }
   };
 

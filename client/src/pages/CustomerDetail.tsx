@@ -182,15 +182,15 @@ export default function CustomerDetail() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <div className="p-4 bg-primary/10 rounded-lg">
                   <p className="text-sm text-muted-foreground">Accepted</p>
-                  <p className="text-2xl font-bold mt-1 text-green-600 dark:text-green-400">
+                  <p className="text-2xl font-bold mt-1 text-primary">
                     {customerQuotes.filter(q => q.status === "accepted").length}
                   </p>
                 </div>
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold mt-1 text-blue-600 dark:text-blue-400">
+                  <p className="text-2xl font-bold mt-1 text-foreground">
                     {customerQuotes.filter(q => q.status === "draft" || q.status === "sent").length}
                   </p>
                 </div>

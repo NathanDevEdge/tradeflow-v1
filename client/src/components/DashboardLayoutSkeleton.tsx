@@ -3,8 +3,8 @@ import { Skeleton } from './ui/skeleton';
 export function DashboardLayoutSkeleton() {
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Sidebar skeleton */}
-      <div className="w-[280px] border-r border-border bg-background p-4 space-y-6">
+      {/* Sidebar skeleton — matches dark teal sidebar */}
+      <div className="w-[280px] border-r p-4 space-y-6" style={{ background: "var(--sidebar)", borderColor: "var(--sidebar-border)" }}>
         {/* Logo area */}
         <div className="flex items-center gap-3 px-2">
           <Skeleton className="h-8 w-8 rounded-md" />
@@ -31,7 +31,7 @@ export function DashboardLayoutSkeleton() {
       </div>
 
       {/* Main content skeleton */}
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 p-6 space-y-4">
         {/* Content blocks */}
         <Skeleton className="h-12 w-48 rounded-lg" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,19 +67,20 @@ export default function PurchaseOrders() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1>
-            <p className="text-muted-foreground mt-2">
-              Create and manage supplier purchase orders
-            </p>
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 pb-4 border-b">
+          <h1 className="text-base font-semibold">Purchase Orders</h1>
+          {!isLoading && purchaseOrders && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {purchaseOrders.length}
+            </span>
+          )}
+          <div className="flex-1" />
           <Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Purchase Order
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                New PO
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -134,11 +134,10 @@ export default function PurchaseOrders() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
         ) : purchaseOrders && purchaseOrders.length > 0 ? (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead>PO Number</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead>Status</TableHead>
@@ -175,22 +174,19 @@ export default function PurchaseOrders() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+          </div>
         ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No purchase orders yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Create your first purchase order to get started
-              </p>
-              <Button onClick={() => setOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Purchase Order
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <ShoppingCart className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-medium mb-1">No purchase orders yet</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Create your first purchase order to get started
+            </p>
+            <Button size="sm" onClick={() => setOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              New PO
+            </Button>
+          </div>
         )}
       </div>
     </DashboardLayout>

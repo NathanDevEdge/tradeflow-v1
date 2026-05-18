@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,18 +107,19 @@ export default function Customers() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your customer contacts and information
-            </p>
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 pb-4 border-b">
+          <h1 className="text-base font-semibold">Customers</h1>
+          {!isLoading && customers && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {customers.length}
+            </span>
+          )}
+          <div className="flex-1" />
           <Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 New Customer
               </Button>
             </DialogTrigger>
@@ -204,11 +204,10 @@ export default function Customers() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
         ) : customers && customers.length > 0 ? (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead>Company Name</TableHead>
                     <TableHead>Contact Name</TableHead>
                     <TableHead>Email</TableHead>
@@ -256,22 +255,19 @@ export default function Customers() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+          </div>
         ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No customers yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Create your first customer to get started
-              </p>
-              <Button onClick={() => setOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Customer
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-medium mb-1">No customers yet</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Create your first customer to get started
+            </p>
+            <Button size="sm" onClick={() => setOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              New Customer
+            </Button>
+          </div>
         )}
       </div>
     </DashboardLayout>

@@ -63,11 +63,11 @@ export default function ContactInbox() {
 
   return (
     <DashboardLayout>
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Contact Inbox</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage and respond to customer inquiries from the landing page
+    <div className="space-y-4 max-w-4xl">
+      <div className="pb-4 border-b">
+        <h1 className="text-base font-semibold">Contact Inbox</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Inquiries from the landing page contact form
         </p>
       </div>
 

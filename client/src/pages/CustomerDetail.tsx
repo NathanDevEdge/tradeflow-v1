@@ -78,18 +78,19 @@ export default function CustomerDetail() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
+              className="h-8 w-8"
               onClick={() => setLocation("/customers")}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{customer.companyName}</h1>
-              <p className="text-muted-foreground mt-1">Customer Details</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold">{customer.companyName}</h1>
+              <span className="text-muted-foreground text-sm">·</span>
+              <span className="text-sm text-muted-foreground">Customer</span>
             </div>
           </div>
           <Button onClick={handleCreateQuote} disabled={createQuoteMutation.isPending}>
@@ -239,7 +240,7 @@ export default function CustomerDetail() {
                         ${parseFloat(quote.totalAmount || "0").toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="text-green-600 font-medium">
+                        <span className="text-primary font-medium">
                           ${parseFloat(quote.totalMargin || "0").toFixed(2)} ({quote.marginPercentage || "0"}%)
                         </span>
                       </TableCell>

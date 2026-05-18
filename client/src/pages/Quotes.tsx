@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,18 +105,28 @@ export default function Quotes() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Quotes</h1>
-            <p className="text-muted-foreground mt-2">
-              Create and manage customer quotes with margin tracking
-            </p>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 pb-4 border-b">
+          <h1 className="text-base font-semibold">Quotes</h1>
+          {!isLoading && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {filteredQuotes?.length ?? 0}
+            </span>
+          )}
+          <div className="flex-1" />
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-sm w-52"
+            />
           </div>
           <Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 New Quote
               </Button>
             </DialogTrigger>
@@ -163,31 +172,15 @@ export default function Quotes() {
           </Dialog>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search quotes by customer or quote number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
         {isLoading ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
+          </div>
         ) : filteredQuotes && filteredQuotes.length > 0 ? (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead>Quote #</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Status</TableHead>
@@ -215,7 +208,7 @@ export default function Quotes() {
                         ${parseFloat(quote.totalAmount || "0").toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        <span className="text-green-600 font-medium">
+                        <span className="text-primary font-medium">
                           ${parseFloat(quote.totalMargin || "0").toFixed(2)} ({quote.marginPercentage || "0"}%)
                         </span>
                       </TableCell>
@@ -252,24 +245,23 @@ export default function Quotes() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+          </div>
         ) : (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No quotes found</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery ? "Try adjusting your search" : "Get started by creating your first quote"}
-              </p>
-              {!searchQuery && (
-                <Button onClick={() => setOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Quote
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-medium mb-1">
+              {searchQuery ? "No quotes match your search" : "No quotes yet"}
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              {searchQuery ? "Try a different search term" : "Create your first quote to get started"}
+            </p>
+            {!searchQuery && (
+              <Button size="sm" onClick={() => setOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                New Quote
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

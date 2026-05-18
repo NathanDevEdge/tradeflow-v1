@@ -157,10 +157,10 @@ export default function Settings() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your company details and branding
+        <div className="pb-4 border-b">
+          <h1 className="text-base font-semibold">Settings</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Company details and branding
           </p>
         </div>
         

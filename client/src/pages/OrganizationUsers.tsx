@@ -110,14 +110,12 @@ export default function OrganizationUsers() {
 
   return (
     <DashboardLayout>
-    <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Organization Users</h1>
-          <p className="text-muted-foreground">Manage users in your organization</p>
-        </div>
-        <Button onClick={() => setInviteDialogOpen(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
+    <div className="space-y-4 max-w-5xl">
+      <div className="flex items-center gap-3 pb-4 border-b">
+        <h1 className="text-base font-semibold">Team Members</h1>
+        <div className="flex-1" />
+        <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
+          <UserPlus className="h-3.5 w-3.5 mr-1.5" />
           Invite User
         </Button>
       </div>

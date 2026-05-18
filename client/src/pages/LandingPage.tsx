@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Check,
   FileText,
@@ -7,9 +7,6 @@ import {
   Users,
   Building2,
   Mail,
-  Shield,
-  Clock,
-  MapPin,
   X,
   FileCheck,
 } from "lucide-react";
@@ -60,23 +57,6 @@ const features = [
   },
 ];
 
-const trustItems = [
-  {
-    icon: MapPin,
-    title: "Australian-Based",
-    body: "Hosted in Australia with local support and data sovereignty.",
-  },
-  {
-    icon: Shield,
-    title: "Secure by Default",
-    body: "256-bit encryption, secure backups, and industry-standard infrastructure.",
-  },
-  {
-    icon: Clock,
-    title: "99.9% Uptime",
-    body: "Reliable infrastructure with automatic backups and monitoring.",
-  },
-];
 
 const comparisonRows = [
   { feature: "Setup time", tradeflow: "5 minutes", spreadsheet: "Hours of formatting", enterprise: "Weeks of training", highlight: true },
@@ -157,30 +137,33 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 py-24 md:py-36">
-        <div className="max-w-3xl space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-muted text-xs font-medium text-muted-foreground">
-            Built for Australian small business
+      <section className="max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left: text */}
+          <div className="space-y-7">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-muted text-xs font-medium text-muted-foreground">
+              Built for Australian small business
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground leading-tight">
+              Better than Spreadsheets,<br />
+              <span className="text-primary">Cheaper than the rest.</span>
+            </h1>
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Quotes, purchase orders, and supplier management — built for installers, retailers, and builders who want professional tools without the enterprise price tag.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button size="lg" onClick={() => setLocation("/login")} className="px-8">
+                Get started
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => scrollTo("pricing")} className="px-8">
+                View pricing
+              </Button>
+            </div>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground leading-tight">
-            Better than Spreadsheets,<br className="hidden md:block" />
-            <span className="text-primary"> Cheaper than the rest.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-            Quotes, purchase orders, and supplier management — built for installers, retailers, and builders who want professional tools without the enterprise price tag.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button size="lg" onClick={() => setLocation("/login")} className="text-base px-8">
-              Get started
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => scrollTo("pricing")}
-              className="text-base px-8"
-            >
-              View pricing
-            </Button>
+
+          {/* Right: app mockup */}
+          <div className="hidden lg:block">
+            <AppMockup />
           </div>
         </div>
       </section>
@@ -197,21 +180,17 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
             {features.map(({ icon: Icon, title, description }) => (
-              <Card key={title} className="bg-card">
-                <CardHeader className="pb-2">
-                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                    <Icon className="h-4 w-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm leading-relaxed">
-                    {description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
+              <div key={title} className="flex gap-4">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">{title}</p>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{description}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -274,17 +253,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Trust indicators */}
-      <section className="bg-muted/50 border-y border-border">
-        <div className="max-w-6xl mx-auto px-6 py-16">
-          <div className="grid md:grid-cols-3 gap-10 text-center">
-            {trustItems.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="flex flex-col items-center gap-3">
-                <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <p className="font-semibold text-sm">{title}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
+      {/* Stats strip */}
+      <section className="border-y border-border bg-muted/30">
+        <div className="max-w-6xl mx-auto px-6 py-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { value: "$40", label: "per month, all-in" },
+              { value: "5 min", label: "to set up and go live" },
+              { value: "AUS", label: "hosted and supported" },
+              { value: "100%", label: "data separation on PDFs" },
+            ].map(({ value, label }) => (
+              <div key={label} className="text-center">
+                <p className="text-2xl font-bold text-primary">{value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{label}</p>
               </div>
             ))}
           </div>
@@ -346,16 +327,12 @@ export default function LandingPage() {
           <div className="mb-14">
             <h2 className="text-3xl font-bold tracking-tight">Frequently asked questions</h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-5 max-w-4xl">
+          <div className="grid md:grid-cols-2 gap-x-12 gap-y-8 max-w-4xl">
             {faqs.map(({ q, a }) => (
-              <Card key={q}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold leading-snug">{q}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
-                </CardContent>
-              </Card>
+              <div key={q}>
+                <p className="font-semibold text-sm leading-snug">{q}</p>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{a}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -486,6 +463,90 @@ export default function LandingPage() {
           </button>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function AppMockup() {
+  const navItems = ["Dashboard", "Pricelists", "Customers", "Quotes", "Purchase Orders"];
+  const rows = [
+    { num: "Q00023", customer: "Apex Installations", status: "accepted", amount: "$3,240.00" },
+    { num: "Q00022", customer: "BlueLine Plumbing", status: "sent", amount: "$1,890.00" },
+    { num: "Q00021", customer: "CoreBuild Pty Ltd", status: "draft", amount: "$745.50" },
+    { num: "Q00020", customer: "Summit Electrical", status: "accepted", amount: "$5,110.00" },
+  ];
+  return (
+    <div className="rounded-xl border border-border shadow-xl overflow-hidden select-none">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-1.5 px-3 py-2.5 border-b bg-muted/60">
+        <div className="h-2.5 w-2.5 rounded-full bg-red-400/50" />
+        <div className="h-2.5 w-2.5 rounded-full bg-amber-400/50" />
+        <div className="h-2.5 w-2.5 rounded-full bg-green-400/50" />
+        <div className="flex-1 mx-3 bg-background rounded border px-2 py-0.5 text-center text-muted-foreground" style={{ fontSize: "10px" }}>
+          tradeflow.devedge.com.au/quotes
+        </div>
+      </div>
+      {/* App shell */}
+      <div className="flex" style={{ height: "300px" }}>
+        {/* Sidebar */}
+        <div className="w-36 border-r flex flex-col py-2 shrink-0" style={{ background: "var(--sidebar)" }}>
+          <div className="px-3 py-2 mb-1">
+            <span className="text-xs font-semibold" style={{ color: "var(--sidebar-foreground)", fontSize: "11px" }}>TradeFlow</span>
+          </div>
+          {navItems.map((item) => (
+            <div
+              key={item}
+              className="mx-2 px-2 py-1.5 rounded-md"
+              style={{
+                fontSize: "10px",
+                background: item === "Quotes" ? "var(--sidebar-primary)" : "transparent",
+                color: item === "Quotes" ? "var(--sidebar-primary-foreground)" : "oklch(0.75 0.04 185)",
+                fontWeight: item === "Quotes" ? 500 : 400,
+              }}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+        {/* Main */}
+        <div className="flex-1 p-3 bg-background overflow-hidden">
+          <div className="flex items-center justify-between pb-2 mb-3 border-b">
+            <span className="font-semibold" style={{ fontSize: "11px" }}>Quotes</span>
+            <div className="bg-primary text-primary-foreground rounded px-2 py-0.5 font-medium" style={{ fontSize: "10px" }}>
+              + New Quote
+            </div>
+          </div>
+          <div className="rounded border overflow-hidden">
+            <div className="grid px-2 py-1.5 bg-muted/50" style={{ gridTemplateColumns: "80px 1fr 60px 70px", gap: "8px", fontSize: "9px", color: "var(--muted-foreground)", fontWeight: 500 }}>
+              <span>Quote #</span><span>Customer</span><span>Status</span><span className="text-right">Total</span>
+            </div>
+            {rows.map((row, i) => (
+              <div
+                key={row.num}
+                className="grid px-2 py-1.5 items-center border-t"
+                style={{ gridTemplateColumns: "80px 1fr 60px 70px", gap: "8px", fontSize: "10px", background: i % 2 === 1 ? "oklch(0.97 0.003 70)" : undefined }}
+              >
+                <span style={{ fontWeight: 500 }}>{row.num}</span>
+                <span style={{ color: "var(--muted-foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.customer}</span>
+                <span>
+                  <span
+                    className="px-1.5 py-0.5 rounded"
+                    style={{
+                      fontSize: "8px",
+                      fontWeight: 500,
+                      background: row.status === "accepted" ? "oklch(0.58 0.14 185 / 0.12)" : row.status === "sent" ? "oklch(0.85 0.1 85 / 0.3)" : "oklch(0.93 0.01 70)",
+                      color: row.status === "accepted" ? "var(--primary)" : row.status === "sent" ? "oklch(0.45 0.12 85)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    {row.status}
+                  </span>
+                </span>
+                <span className="text-right" style={{ fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{row.amount}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

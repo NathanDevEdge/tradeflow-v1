@@ -318,15 +318,14 @@ export default function QuoteDetail() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/quotes")}>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLocation("/quotes")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{quote.quoteNumber}</h1>
-              <p className="text-muted-foreground mt-1">
-                Customer: {customer?.companyName || "Loading..."}
-              </p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold">{quote.quoteNumber}</h1>
+              <span className="text-muted-foreground text-sm">·</span>
+              <span className="text-sm text-muted-foreground">{customer?.companyName || "…"}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -523,10 +522,10 @@ export default function QuoteDetail() {
                               />
                             </div>
                           </td>
-                          <td className="p-3 text-right text-green-600 font-medium">
+                          <td className="p-3 text-right text-primary font-medium">
                             ${marginPerUnit.toFixed(2)}
                           </td>
-                          <td className="p-3 text-right text-green-600 font-medium">
+                          <td className="p-3 text-right text-primary font-medium">
                             {marginPercent.toFixed(1)}%
                           </td>
                           <td className="p-3 text-right font-medium">
@@ -566,7 +565,7 @@ export default function QuoteDetail() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Margin</span>
-                    <span className="font-medium tabular-nums text-green-600">
+                    <span className="font-medium tabular-nums text-primary">
                       ${calculations.totalMargin.toFixed(2)} ({calculations.marginPercent.toFixed(1)}%)
                     </span>
                   </div>

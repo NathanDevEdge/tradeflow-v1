@@ -88,7 +88,7 @@ export default function SupplierDetail() {
               Back
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">{supplier.companyName}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{supplier.companyName}</h1>
               <p className="text-muted-foreground mt-1">Supplier Details</p>
             </div>
           </div>

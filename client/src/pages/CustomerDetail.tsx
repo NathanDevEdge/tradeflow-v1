@@ -38,13 +38,14 @@ export default function CustomerDetail() {
     },
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
+    const base = "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium";
     switch (status) {
-      case "draft": return "secondary";
-      case "sent": return "default";
-      case "accepted": return "default";
-      case "declined": return "destructive";
-      default: return "secondary";
+      case "draft":    return `${base} bg-muted text-muted-foreground`;
+      case "sent":     return `${base} bg-amber-50 text-amber-900`;
+      case "accepted": return `${base} bg-primary/10 text-primary`;
+      case "declined": return `${base} bg-destructive/10 text-destructive`;
+      default:         return `${base} bg-muted text-muted-foreground`;
     }
   };
 
@@ -87,7 +88,7 @@ export default function CustomerDetail() {
               Back
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">{customer.companyName}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{customer.companyName}</h1>
               <p className="text-muted-foreground mt-1">Customer Details</p>
             </div>
           </div>
@@ -230,9 +231,9 @@ export default function CustomerDetail() {
                     >
                       <TableCell className="font-medium">{quote.quoteNumber}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusColor(quote.status)}>
+                        <span className={getStatusClass(quote.status)}>
                           {quote.status}
-                        </Badge>
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         ${parseFloat(quote.totalAmount || "0").toFixed(2)}

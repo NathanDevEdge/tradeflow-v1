@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, FileDown, Trash2, Search } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
@@ -324,7 +323,7 @@ export default function QuoteDetail() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">{quote.quoteNumber}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">{quote.quoteNumber}</h1>
               <p className="text-muted-foreground mt-1">
                 Customer: {customer?.companyName || "Loading..."}
               </p>
@@ -360,14 +359,17 @@ export default function QuoteDetail() {
               </>
             )}
             
-            <Badge variant={
-              quote.status === "draft" ? "secondary" :
-              quote.status === "sent" ? "default" :
-              quote.status === "accepted" ? "default" :
-              "destructive"
-            }>
+            <span className={(() => {
+              const base = "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold";
+              switch (quote.status) {
+                case "draft":    return `${base} bg-muted text-muted-foreground`;
+                case "sent":     return `${base} bg-amber-50 text-amber-900`;
+                case "accepted": return `${base} bg-primary/10 text-primary`;
+                default:         return `${base} bg-destructive/10 text-destructive`;
+              }
+            })()}>
               {quote.status.toUpperCase()}
-            </Badge>
+            </span>
             
             <Button onClick={handleGeneratePDF} disabled={generatePDFMutation.isPending}>
               <FileDown className="mr-2 h-4 w-4" />
@@ -557,24 +559,24 @@ export default function QuoteDetail() {
             {/* Totals Section */}
             {quote.items && quote.items.length > 0 && (
               <div className="flex justify-end">
-                <div className="w-full md:w-96 space-y-2 border-t pt-4">
+                <div className="w-full md:w-80 space-y-2 border-t pt-4">
                   <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span className="font-medium">${calculations.subtotal.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Subtotal (ex GST)</span>
+                    <span className="font-medium tabular-nums">${calculations.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Total Margin:</span>
-                    <span className="font-medium text-green-600">
+                    <span className="text-muted-foreground">Margin</span>
+                    <span className="font-medium tabular-nums text-green-600">
                       ${calculations.totalMargin.toFixed(2)} ({calculations.marginPercent.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>GST (10%):</span>
-                    <span className="font-medium">${calculations.gst.toFixed(2)}</span>
+                    <span className="text-muted-foreground">GST (10%)</span>
+                    <span className="font-medium tabular-nums">${calculations.gst.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span>${calculations.total.toFixed(2)}</span>
+                  <div className="flex justify-between font-bold border-t pt-2">
+                    <span>Total (inc GST)</span>
+                    <span className="text-xl tabular-nums">${calculations.total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>

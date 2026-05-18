@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Plus, Trash2, FileDown, Mail, Search, MapPin } from "lucide-react";
 import { ShippingAddressModal } from "@/components/ShippingAddressModal";
@@ -248,21 +247,22 @@ export default function PurchaseOrderDetailNew() {
     return { subtotal, gst, grandTotal };
   }, [purchaseOrder?.items]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
+    const base = "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold";
     switch (status) {
-      case "draft": return "secondary";
-      case "sent": return "default";
-      case "received": return "default";
-      case "cancelled": return "destructive";
-      default: return "secondary";
+      case "draft":     return `${base} bg-muted text-muted-foreground`;
+      case "sent":      return `${base} bg-amber-50 text-amber-900`;
+      case "received":  return `${base} bg-primary/10 text-primary`;
+      case "cancelled": return `${base} bg-destructive/10 text-destructive`;
+      default:          return `${base} bg-muted text-muted-foreground`;
     }
   };
 
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-muted-foreground">Loading purchase order...</p>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
         </div>
       </DashboardLayout>
     );
@@ -290,10 +290,10 @@ export default function PurchaseOrderDetailNew() {
             </Button>
             <div>
               <div className="flex items-center space-x-3">
-                <h1 className="text-3xl font-bold tracking-tight">{purchaseOrder.poNumber}</h1>
-                <Badge variant={getStatusColor(purchaseOrder.status)}>
+                <h1 className="text-2xl font-bold tracking-tight">{purchaseOrder.poNumber}</h1>
+                <span className={getStatusClass(purchaseOrder.status)}>
                   {purchaseOrder.status}
-                </Badge>
+                </span>
               </div>
               <p className="text-muted-foreground mt-1">
                 Supplier: {supplier?.companyName || "Loading..."}
@@ -531,15 +531,15 @@ export default function PurchaseOrderDetailNew() {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal (ex GST)</span>
-                  <span className="font-medium">${calculations.subtotal.toFixed(2)}</span>
+                  <span className="font-medium tabular-nums">${calculations.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">GST (10%)</span>
-                  <span className="font-medium">${calculations.gst.toFixed(2)}</span>
+                  <span className="font-medium tabular-nums">${calculations.gst.toFixed(2)}</span>
                 </div>
                 <div className="border-t pt-3 flex justify-between">
                   <span className="font-semibold">Total (inc GST)</span>
-                  <span className="text-2xl font-bold">${calculations.grandTotal.toFixed(2)}</span>
+                  <span className="text-xl font-bold tabular-nums">${calculations.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
             </Card>

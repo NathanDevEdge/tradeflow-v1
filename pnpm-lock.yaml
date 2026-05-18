@@ -175,12 +175,12 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-      nodemailer:
-        specifier: ^8.0.7
-        version: 8.0.7
       pdfkit:
         specifier: ^0.17.2
         version: 0.17.2
+      postal-mime:
+        specifier: ^2.7.4
+        version: 2.7.4
       react:
         specifier: ^19.2.1
         version: 19.2.1
@@ -199,9 +199,6 @@ importers:
       recharts:
         specifier: ^2.15.2
         version: 2.15.4(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
-      resend:
-        specifier: ^6.12.3
-        version: 6.12.3
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -211,6 +208,9 @@ importers:
       superjson:
         specifier: ^1.13.3
         version: 1.13.3
+      svix:
+        specifier: ^1.93.0
+        version: 1.93.0
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
@@ -245,9 +245,6 @@ importers:
       '@types/node':
         specifier: ^24.7.0
         version: 24.7.0
-      '@types/nodemailer':
-        specifier: ^8.0.0
-        version: 8.0.0
       '@types/react':
         specifier: ^19.2.1
         version: 19.2.1
@@ -2328,9 +2325,6 @@ packages:
   '@types/node@24.7.0':
     resolution: {integrity: sha512-IbKooQVqUBrlzWTi79E8Fw78l8k1RNtlDDNWsFZs7XonuQSJ8oNYfEeclhprUldXISRMLzBpILuKgPlIxm+/Yw==}
 
-  '@types/nodemailer@8.0.0':
-    resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
-
   '@types/pdfkit@0.17.4':
     resolution: {integrity: sha512-odAmVuuguRxKh1X4pbMrJMp8ecwNqHRw6lweupvzK+wuyNmi6wzlUlGVZ9EqMvp3Bs2+L9Ty0sRlrvKL+gsQZg==}
 
@@ -3691,10 +3685,6 @@ packages:
   node-releases@2.0.23:
     resolution: {integrity: sha512-cCmFDMSm26S6tQSDpBCg/NR8NENrVPhAJSf+XbxBG4rPFaaonlEoE9wHQmun+cls499TQGSb7ZyPBRlzgKfpeg==}
 
-  nodemailer@8.0.7:
-    resolution: {integrity: sha512-pkjE4mkBzQjdJT4/UmlKl3pX0rC9fZmjh7c6C9o7lv66Ac6w9WCnzPzhbPNxwZAzlF4mdq4CSWB5+FbK6FWCow==}
-    engines: {node: '>=6.0.0'}
-
   normalize-range@0.1.2:
     resolution: {integrity: sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA==}
     engines: {node: '>=0.10.0'}
@@ -3961,15 +3951,6 @@ packages:
   remark-stringify@11.0.0:
     resolution: {integrity: sha512-1OSmLd3awB/t8qdoEOMazZkNsfVTeY4fTsgzcQFdXNq8ToTN4ZGwrMnlda4K6smTFKD+GRV6O48i6Z4iKgPPpw==}
 
-  resend@6.12.3:
-    resolution: {integrity: sha512-FkEi6YPnVL96/LvH8+QP7NaeaBy5brYXwlRqUCqZZeNL0/iyKij18IPmyPXYauT/2ODn1JG04qKz+qlJfzqzTw==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      '@react-email/render': '*'
-    peerDependenciesMeta:
-      '@react-email/render':
-        optional: true
-
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
@@ -4100,8 +4081,8 @@ packages:
     resolution: {integrity: sha512-mJiVjfd2vokfDxsQPOwJ/PtanO87LhpYY88ubI5dUB1Ab58Txbyje3+jpm+/83R/fevaq/107NNhtYBLuoTrFg==}
     engines: {node: '>=10'}
 
-  svix@1.92.2:
-    resolution: {integrity: sha512-ZmuA3UVvlnF9EgxlzmPtF7CKjQb64Z6OFlyfdDfU0sdcC7dJa+3aOYX5B9mA+RS6ch1AxBa4UP/l6KmqfGtWBQ==}
+  svix@1.93.0:
+    resolution: {integrity: sha512-AeCcSs+CrHNejZytBuvD4hw2B14rB7+Sq7ggwYgF22TgXh0uJJ3T4uVJSbSYKFSbO1AA4o470XoGgOYqu2fbSA==}
 
   tailwind-merge@3.3.1:
     resolution: {integrity: sha512-gBXpgUm/3rp1lMZZrM/w7D8GKqshif0zAymAhbCyIt8KMe+0v9DQ7cdYLR4FHH/cKpdTXb+A/tKKU3eolfsI+g==}
@@ -6772,10 +6753,6 @@ snapshots:
     dependencies:
       undici-types: 7.14.0
 
-  '@types/nodemailer@8.0.0':
-    dependencies:
-      '@types/node': 24.7.0
-
   '@types/pdfkit@0.17.4':
     dependencies:
       '@types/node': 24.7.0
@@ -8400,8 +8377,6 @@ snapshots:
 
   node-releases@2.0.23: {}
 
-  nodemailer@8.0.7: {}
-
   normalize-range@0.1.2: {}
 
   object-assign@4.1.1: {}
@@ -8715,11 +8690,6 @@ snapshots:
       mdast-util-to-markdown: 2.1.2
       unified: 11.0.5
 
-  resend@6.12.3:
-    dependencies:
-      postal-mime: 2.7.4
-      svix: 1.92.2
-
   resolve-pkg-maps@1.0.0: {}
 
   restructure@3.0.2: {}
@@ -8913,7 +8883,7 @@ snapshots:
     dependencies:
       copy-anything: 3.0.5
 
-  svix@1.92.2:
+  svix@1.93.0:
     dependencies:
       standardwebhooks: 1.0.0
 

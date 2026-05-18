@@ -4,7 +4,6 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -17,7 +16,7 @@ export default function Login() {
   const loginMutation = trpc.customAuth.login.useMutation({
     onSuccess: () => {
       toast.success("Login successful");
-      window.location.href = "/dashboard"; // Full reload to refresh auth state
+      window.location.href = "/dashboard";
     },
     onError: (error) => {
       toast.error(error.message);
@@ -32,18 +31,50 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your Quote & PO Management account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+    <div className="min-h-screen flex">
+      {/* Left panel — dark teal brand */}
+      <div
+        className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col justify-between p-12 shrink-0"
+        style={{ background: "var(--sidebar)" }}
+      >
+        <div>
+          <img src="/logo.png" alt="TradeFlow" className="h-9 object-contain" />
+        </div>
+
+        <div className="space-y-4">
+          <p
+            className="text-3xl font-bold leading-tight tracking-tight"
+            style={{ color: "var(--sidebar-foreground)" }}
+          >
+            Better than Spreadsheets,<br />
+            Cheaper than the rest.
+          </p>
+          <p className="text-sm" style={{ color: "oklch(0.75 0.04 185)" }}>
+            Quotes, purchase orders, and supplier management — built for small businesses that mean business.
+          </p>
+        </div>
+
+        <p className="text-xs" style={{ color: "oklch(0.55 0.04 185)" }}>
+          © {new Date().getFullYear()} TradeFlow
+        </p>
+      </div>
+
+      {/* Right panel — login form */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile logo */}
+          <div className="lg:hidden">
+            <img src="/logo.png" alt="TradeFlow" className="h-8 object-contain" />
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Sign in</h1>
+            <p className="text-sm text-muted-foreground">Enter your email and password to continue</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -52,10 +83,22 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                autoComplete="email"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  onClick={() => setLocation("/forgot-password")}
+                  disabled={isLoading}
+                >
+                  Forgot password?
+                </button>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -64,38 +107,22 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
+                autoComplete="current-password"
               />
             </div>
-            <Button
-              type="button"
-              variant="link"
-              className="px-0 text-sm"
-              onClick={() => setLocation("/forgot-password")}
-              disabled={isLoading}
-            >
-              Forgot password?
-            </Button>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
+              Sign in
             </Button>
-            <div className="text-sm text-center text-muted-foreground">
-              Don't have an account?{" "}
-              <Button
-                type="button"
-                variant="link"
-                className="px-0"
-                onClick={() => setLocation("/register")}
-                disabled={isLoading}
-              >
-                Contact your administrator
-              </Button>
-            </div>
-          </CardFooter>
-        </form>
-      </Card>
+          </form>
+
+          <p className="text-xs text-center text-muted-foreground">
+            No account?{" "}
+            <span className="text-primary">Contact your TradeFlow administrator.</span>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

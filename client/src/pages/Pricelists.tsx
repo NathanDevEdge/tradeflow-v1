@@ -58,7 +58,7 @@ export default function Pricelists() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Pricelists</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Pricelists</h1>
             <p className="text-muted-foreground mt-2">
               Manage your product pricelists and upload CSV files
             </p>
@@ -106,34 +106,36 @@ export default function Pricelists() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading pricelists...</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
         ) : pricelists && pricelists.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {pricelists.map((pricelist) => (
-              <Card key={pricelist.id} className="relative">
-                <CardHeader>
+              <Card key={pricelist.id} className="group hover:border-primary/40 hover:shadow-sm transition-all">
+                <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <FileText className="h-8 w-8 text-primary" />
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      className="h-8 w-8 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => handleDelete(pricelist.id, pricelist.name)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <CardTitle className="mt-4">{pricelist.name}</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-sm font-semibold mt-3">{pricelist.name}</CardTitle>
+                  <CardDescription className="text-xs">
                     Created {new Date(pricelist.createdAt).toLocaleDateString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Link href={`/pricelists/${pricelist.id}`}>
-                    <Button variant="outline" className="w-full">
-                      View Items
+                    <Button variant="outline" size="sm" className="w-full">
+                      View items
                     </Button>
                   </Link>
                 </CardContent>

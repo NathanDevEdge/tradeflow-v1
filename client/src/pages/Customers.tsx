@@ -111,7 +111,7 @@ export default function Customers() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
             <p className="text-muted-foreground mt-2">
               Manage your customer contacts and information
             </p>
@@ -200,8 +200,8 @@ export default function Customers() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading customers...</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
         ) : customers && customers.length > 0 ? (
           <Card>

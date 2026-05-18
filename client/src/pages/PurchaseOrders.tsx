@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { Plus, ShoppingCart, Eye } from "lucide-react";
 import { useState } from "react";
@@ -56,13 +55,14 @@ export default function PurchaseOrders() {
     return supplier?.companyName || "Unknown Supplier";
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
+    const base = "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium";
     switch (status) {
-      case "draft": return "secondary";
-      case "sent": return "default";
-      case "received": return "default";
-      case "cancelled": return "destructive";
-      default: return "secondary";
+      case "draft":     return `${base} bg-muted text-muted-foreground`;
+      case "sent":      return `${base} bg-amber-50 text-amber-900`;
+      case "received":  return `${base} bg-primary/10 text-primary`;
+      case "cancelled": return `${base} bg-destructive/10 text-destructive`;
+      default:          return `${base} bg-muted text-muted-foreground`;
     }
   };
 
@@ -71,7 +71,7 @@ export default function PurchaseOrders() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1>
             <p className="text-muted-foreground mt-2">
               Create and manage supplier purchase orders
             </p>
@@ -130,8 +130,8 @@ export default function PurchaseOrders() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading purchase orders...</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
         ) : purchaseOrders && purchaseOrders.length > 0 ? (
           <Card>
@@ -156,11 +156,11 @@ export default function PurchaseOrders() {
                       <TableCell className="font-medium">{po.poNumber}</TableCell>
                       <TableCell>{getSupplierName(po.supplierId)}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusColor(po.status)}>
+                        <span className={getStatusClass(po.status)}>
                           {po.status}
-                        </Badge>
+                        </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right tabular-nums">
                         ${parseFloat(po.totalAmount).toFixed(2)}
                       </TableCell>
                       <TableCell>{new Date(po.createdAt).toLocaleDateString()}</TableCell>

@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { trpc } from "@/lib/trpc";
 import { Plus, FileText, Eye, Search, Trash2 } from "lucide-react";
@@ -80,13 +79,14 @@ export default function Quotes() {
     return customer?.companyName || "Unknown Customer";
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusClass = (status: string) => {
+    const base = "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium";
     switch (status) {
-      case "draft": return "secondary";
-      case "sent": return "default";
-      case "accepted": return "default";
-      case "declined": return "destructive";
-      default: return "secondary";
+      case "draft":    return `${base} bg-muted text-muted-foreground`;
+      case "sent":     return `${base} bg-amber-50 text-amber-900`;
+      case "accepted": return `${base} bg-primary/10 text-primary`;
+      case "declined": return `${base} bg-destructive/10 text-destructive`;
+      default:         return `${base} bg-muted text-muted-foreground`;
     }
   };
 
@@ -109,7 +109,7 @@ export default function Quotes() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Quotes</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Quotes</h1>
             <p className="text-muted-foreground mt-2">
               Create and manage customer quotes with margin tracking
             </p>
@@ -207,14 +207,14 @@ export default function Quotes() {
                       <TableCell className="font-medium">{quote.quoteNumber}</TableCell>
                       <TableCell>{getCustomerName(quote.customerId)}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusColor(quote.status)}>
+                        <span className={getStatusClass(quote.status)}>
                           {quote.status}
-                        </Badge>
+                        </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right tabular-nums">
                         ${parseFloat(quote.totalAmount || "0").toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right tabular-nums">
                         <span className="text-green-600 font-medium">
                           ${parseFloat(quote.totalMargin || "0").toFixed(2)} ({quote.marginPercentage || "0"}%)
                         </span>

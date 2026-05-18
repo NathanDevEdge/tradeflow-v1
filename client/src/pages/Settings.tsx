@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { storagePut } from "../../../server/storage";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Upload, Building2, Lock } from "lucide-react";
 
 export default function Settings() {
@@ -146,22 +146,23 @@ export default function Settings() {
   
   if (isLoading) {
     return (
-      <div className="container py-8">
-        <div className="max-w-2xl">
-          <h1 className="text-3xl font-bold mb-6">Settings</h1>
-          <p className="text-muted-foreground">Loading...</p>
+      <DashboardLayout>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
-  
+
   return (
-    <div className="container py-8">
-      <div className="max-w-2xl">
-        <h1 className="text-3xl font-bold mb-2">Settings</h1>
-        <p className="text-muted-foreground mb-8">
-          Manage your company details and branding
-        </p>
+    <DashboardLayout>
+      <div className="max-w-2xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your company details and branding
+          </p>
+        </div>
         
         <Card>
           <CardHeader>
@@ -273,7 +274,7 @@ export default function Settings() {
         </Card>
         
         {/* Password Change */}
-        <Card className="mt-6">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
@@ -325,6 +326,6 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

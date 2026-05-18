@@ -115,7 +115,7 @@ export default function Suppliers() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Suppliers</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Suppliers</h1>
             <p className="text-muted-foreground mt-2">
               Manage your supplier contacts and PO email addresses
             </p>
@@ -207,8 +207,8 @@ export default function Suppliers() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading suppliers...</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
         ) : suppliers && suppliers.length > 0 ? (
           <Card>

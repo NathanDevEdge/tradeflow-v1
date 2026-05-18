@@ -68,7 +68,7 @@ export default function TeamManagement() {
   return (
     <DashboardLayout>
       <div className="container py-8">
-        <h1 className="text-3xl font-bold mb-2">Team Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Team Management</h1>
         <p className="text-muted-foreground mb-8">
           Manage your organization's team members and their access
         </p>

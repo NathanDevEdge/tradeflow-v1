@@ -187,7 +187,7 @@ export default function SuperAdminPanel() {
     <DashboardLayout>
       <div className="container mx-auto py-8 space-y-8">
         <div>
-          <h1 className="text-3xl font-bold">Super Admin Panel</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Super Admin Panel</h1>
           <p className="text-muted-foreground">Manage organizations and users across the entire system</p>
         </div>
 

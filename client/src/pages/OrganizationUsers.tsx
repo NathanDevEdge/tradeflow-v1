@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Plus, UserPlus, Trash2, Key, Shield } from "lucide-react";
 import { toast } from "sonner";
 
@@ -108,10 +109,11 @@ export default function OrganizationUsers() {
   const selectedUser = users?.find(u => u.id === selectedUserId);
 
   return (
-    <div className="container py-8">
-      <div className="flex items-center justify-between mb-8">
+    <DashboardLayout>
+    <div className="space-y-6 max-w-5xl">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Organization Users</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Organization Users</h1>
           <p className="text-muted-foreground">Manage users in your organization</p>
         </div>
         <Button onClick={() => setInviteDialogOpen(true)}>
@@ -315,5 +317,6 @@ export default function OrganizationUsers() {
         </DialogContent>
       </Dialog>
     </div>
+    </DashboardLayout>
   );
 }

@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Trash2, Mail, Building2, User, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -52,18 +53,19 @@ export default function ContactInbox() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Loading inquiries...</p>
+      <DashboardLayout>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <DashboardLayout>
+    <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-bold">Contact Inbox</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Contact Inbox</h1>
         <p className="text-muted-foreground mt-2">
           Manage and respond to customer inquiries from the landing page
         </p>
@@ -167,5 +169,6 @@ export default function ContactInbox() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

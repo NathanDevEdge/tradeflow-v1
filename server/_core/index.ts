@@ -82,8 +82,10 @@ async function startServer() {
         ? {
             directives: {
               defaultSrc: ["'self'"],
-              scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com"],
-              styleSrc: ["'self'", "'unsafe-inline'"],
+              // 'unsafe-inline' + 'unsafe-eval' needed for Vite-built bundles (inline module preload)
+              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"],
+              styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+              fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
               imgSrc: ["'self'", "data:", "https:", "blob:"],
               connectSrc: ["'self'", "https://api.stripe.com"],
               frameSrc: ["https://js.stripe.com", "https://hooks.stripe.com"],

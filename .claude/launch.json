@@ -5,7 +5,7 @@
       "name": "tradeflow",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
-      "port": 5173
+      "port": 3000
     }
   ]
 }

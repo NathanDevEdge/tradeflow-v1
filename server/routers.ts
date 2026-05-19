@@ -1141,22 +1141,54 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const { storagePut } = await import("./storage");
-        
-        // Decode base64 to buffer
+
+        // Server-side MIME type whitelist — never trust client-supplied mimeType alone
+        const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+        if (!ALLOWED_MIME_TYPES.includes(input.mimeType)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Only image files are allowed (JPEG, PNG, WebP, GIF, SVG)." });
+        }
+
+        // Verify the actual buffer magic bytes match the declared MIME type
         const buffer = Buffer.from(input.fileData, "base64");
-        
-        // Generate unique filename
+        const MAGIC: Record<string, Buffer[]> = {
+          "image/jpeg": [Buffer.from([0xff, 0xd8, 0xff])],
+          "image/png":  [Buffer.from([0x89, 0x50, 0x4e, 0x47])],
+          "image/webp": [Buffer.from("RIFF")], // checked via offset 8 too, partial is fine as a sanity check
+          "image/gif":  [Buffer.from("GIF87a"), Buffer.from("GIF89a")],
+          "image/svg+xml": [], // SVG is text-based, skip magic bytes check
+        };
+        const magics = MAGIC[input.mimeType];
+        if (magics && magics.length > 0) {
+          const matches = magics.some(magic => buffer.subarray(0, magic.length).equals(magic));
+          if (!matches) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "File content does not match the declared image type." });
+          }
+        }
+
+        // Max 5 MB
+        if (buffer.byteLength > 5 * 1024 * 1024) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Logo file must be smaller than 5 MB." });
+        }
+
+        // Generate unique filename using the declared extension derived from MIME type
+        const MIME_TO_EXT: Record<string, string> = {
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp",
+          "image/gif": "gif",
+          "image/svg+xml": "svg",
+        };
+        const fileExtension = MIME_TO_EXT[input.mimeType];
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(7);
-        const fileExtension = input.fileName.split(".").pop();
         const fileKey = `company-logos/logo-${timestamp}-${randomSuffix}.${fileExtension}`;
-        
+
         // Upload to S3
         const { url } = await storagePut(fileKey, buffer, input.mimeType);
-        
+
         // Update company settings with new logo URL
         await dbHelpers.upsertCompanySettings(ctx.organizationId, { logoUrl: url });
-        
+
         return { url };
       }),
   }),
@@ -1701,10 +1733,15 @@ ${input.message}
 
     delete: superAdminProcedure
       .input(z.object({ userId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-        
+
+        // Prevent super admins from deleting their own account
+        if (input.userId === ctx.user.id) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot delete your own super admin account." });
+        }
+
         await db.delete(users).where(eq(users.id, input.userId));
         return { success: true };
       }),

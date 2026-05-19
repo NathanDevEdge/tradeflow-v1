@@ -15,7 +15,6 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 const features = [
@@ -101,18 +100,25 @@ export default function LandingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const submitMutation = trpc.contact.submit.useMutation({
-    onSuccess: () => {
+  const handleContactSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/trpc/contact.submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ json: contactForm }),
+      });
+      if (!res.ok) throw new Error("Failed to send");
       toast.success("Message sent!");
       setSubmitSuccess(true);
       setContactForm({ name: "", email: "", company: "", message: "" });
+    } catch {
+      toast.error("Failed to send. Please try again.");
+    } finally {
       setIsSubmitting(false);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to send. Please try again.");
-      setIsSubmitting(false);
-    },
-  });
+    }
+  };
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -378,8 +384,7 @@ export default function LandingPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  setIsSubmitting(true);
-                  submitMutation.mutate(contactForm);
+                  handleContactSubmit();
                 }}
                 className="space-y-5"
               >

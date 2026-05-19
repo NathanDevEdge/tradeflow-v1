@@ -12,7 +12,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import AdminLogin from "./pages/AdminLogin";
 import SuperAdminPanel from "./pages/SuperAdminPanel";
 import ContactInbox from "./pages/ContactInbox";
 import Pricelists from "./pages/Pricelists";
@@ -62,10 +61,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       
-      {/* Hidden admin OAuth route with pin */}
-      <Route path="/admin/login/9967" component={AdminLogin} />
-
-      {/* Super admin panel — role guard is inside AdminPanel */}
+{/* Super admin panel — role guard is inside AdminPanel */}
       <Route path="/admin" component={AdminPanel} />
       
       {/* Public landing page */}

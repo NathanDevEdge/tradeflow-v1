@@ -16,6 +16,15 @@ import { sendPurchaseOrderEmail } from "./email";
 import * as customAuth from "./customAuth";
 import * as admin from "./admin";
 import { SignJWT } from "jose";
+import { sendSystemEmail } from "./email";
+import { ENV } from "./_core/env";
+import {
+  createNewSignupCheckoutSession,
+  createUpgradeCheckoutSession,
+  createPortalSession,
+  type SeatOption,
+} from "./stripe";
+import { orgOwnerProcedure } from "./organizationMiddleware";
 
 // CSV column name normalization - handles case-insensitive and flexible naming
 function normalizeColumnName(name: string): string {
@@ -199,7 +208,14 @@ export const appRouter = router({
   }),
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      if (!opts.ctx.user) return null;
+      return {
+        ...opts.ctx.user,
+        isImpersonating: opts.ctx.isImpersonating,
+        impersonatedBy: opts.ctx.impersonatedBy,
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       
@@ -1236,12 +1252,49 @@ ${input.message}
     }),
 
     create: superAdminProcedure
-      .input(z.object({ 
+      .input(z.object({
         name: z.string().min(1),
         subscriptionType: z.enum(["monthly", "annual", "indefinite"]).default("monthly"),
+        ownerEmail: z.string().email().optional(),
+        ownerName: z.string().optional(),
+        ownerPassword: z.string().min(8).optional(),
+        userLimit: z.number().min(1).default(1),
       }))
       .mutation(async ({ input }) => {
-        return dbHelpers.createOrganization(input.name, input.subscriptionType);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const supportCode = String(Math.floor(100000 + Math.random() * 900000));
+        let endDate: Date | null = null;
+        if (input.subscriptionType === "monthly") {
+          endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + 1);
+        } else if (input.subscriptionType === "annual") {
+          endDate = new Date();
+          endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+        const [orgResult] = await db.insert(organizations).values({
+          name: input.name,
+          subscriptionType: input.subscriptionType,
+          subscriptionStatus: input.subscriptionType === "indefinite" ? "active" : "active",
+          subscriptionEndDate: endDate,
+          userLimit: input.userLimit,
+          supportCode,
+        });
+        const orgId = Number(orgResult.insertId);
+        // Optionally create an owner user
+        if (input.ownerEmail && input.ownerName && input.ownerPassword) {
+          const passwordHash = await customAuth.hashPassword(input.ownerPassword);
+          await db.insert(users).values({
+            email: input.ownerEmail.toLowerCase(),
+            passwordHash,
+            name: input.ownerName,
+            loginMethod: "email",
+            role: "org_owner",
+            status: "active",
+            organizationId: orgId,
+          });
+        }
+        return { id: orgId, supportCode };
       }),
 
     updateSubscription: superAdminProcedure
@@ -1317,6 +1370,135 @@ ${input.message}
 
         return { success: true };
       }),
+
+    setSuspended: superAdminProcedure
+      .input(z.object({ organizationId: z.number(), suspended: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        await db.update(organizations)
+          .set({ suspended: input.suspended ? 1 : 0 })
+          .where(eq(organizations.id, input.organizationId));
+        return { success: true };
+      }),
+
+    updateStatus: superAdminProcedure
+      .input(z.object({
+        organizationId: z.number(),
+        status: z.enum(["active", "expired", "cancelled", "trial"]),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        await db.update(organizations)
+          .set({ subscriptionStatus: input.status })
+          .where(eq(organizations.id, input.organizationId));
+        return { success: true };
+      }),
+
+    getWithUsers: superAdminProcedure
+      .input(z.object({ organizationId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const org = await db.select().from(organizations).where(eq(organizations.id, input.organizationId)).limit(1);
+        if (!org.length) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+        const orgUsers = await db.select().from(users).where(eq(users.organizationId, input.organizationId));
+        return { ...org[0], users: orgUsers };
+      }),
+
+    stats: superAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const allOrgs = await db.select().from(organizations);
+      const allUsers = await db.select().from(users);
+      const now = new Date();
+      return {
+        totalOrgs: allOrgs.length,
+        active: allOrgs.filter(o => o.subscriptionStatus === "active" && (!o.subscriptionEndDate || new Date(o.subscriptionEndDate) > now)).length,
+        trialing: allOrgs.filter(o => o.subscriptionStatus === "trial" && (!o.subscriptionEndDate || new Date(o.subscriptionEndDate) > now)).length,
+        expired: allOrgs.filter(o => o.subscriptionStatus === "expired" || o.subscriptionStatus === "cancelled" || (o.subscriptionEndDate && new Date(o.subscriptionEndDate) < now && o.subscriptionStatus !== "active")).length,
+        suspended: allOrgs.filter(o => o.suspended === 1).length,
+        totalUsers: allUsers.filter(u => u.role !== "super_admin").length,
+      };
+    }),
+
+    resetUserPassword: superAdminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+        const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
+        const passwordHash = await customAuth.hashPassword(tempPassword);
+        await db.update(users).set({ passwordHash, status: "active" }).where(eq(users.id, input.userId));
+        return { tempPassword };
+      }),
+  }),
+
+  // Super admin impersonation
+  superAdmin: router({
+    startImpersonation: superAdminProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+        const org = await db.select().from(organizations).where(eq(organizations.supportCode, input.code)).limit(1);
+        if (!org.length) throw new TRPCError({ code: "NOT_FOUND", message: "No organisation found with that code" });
+
+        // Find org owner
+        const orgUsers = await db.select().from(users)
+          .where(and(eq(users.organizationId, org[0].id), eq(users.status, "active")))
+          .limit(10);
+
+        const owner = orgUsers.find(u => u.role === "org_owner") ?? orgUsers[0];
+        if (!owner) throw new TRPCError({ code: "NOT_FOUND", message: "No active user found in that organisation" });
+
+        // Create impersonation JWT
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret");
+        const token = await new SignJWT({
+          userId: owner.id,
+          email: owner.email,
+          impersonating: true,
+          impersonatedBy: ctx.user.id,
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .setExpirationTime("4h")
+          .sign(secret);
+
+        const isSecure = ctx.req.protocol === "https";
+        ctx.res.cookie("impersonation_session", token, {
+          httpOnly: true,
+          secure: isSecure,
+          sameSite: isSecure ? "none" : "lax",
+          path: "/",
+          maxAge: 4 * 60 * 60 * 1000, // 4 hours
+        });
+
+        return { success: true, orgName: org[0].name, ownerEmail: owner.email };
+      }),
+
+    exitImpersonation: protectedProcedure.mutation(({ ctx }) => {
+      const isSecure = ctx.req.protocol === "https";
+      ctx.res.clearCookie("impersonation_session", {
+        httpOnly: true,
+        secure: isSecure,
+        sameSite: isSecure ? "none" : "lax",
+        path: "/",
+      });
+      return { success: true };
+    }),
+  }),
+
+  // Support code for org owners (to share with admin for impersonation)
+  support: router({
+    getCode: orgOwnerProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const org = await db.select().from(organizations).where(eq(organizations.id, ctx.organizationId)).limit(1);
+      if (!org.length) throw new TRPCError({ code: "NOT_FOUND", message: "Organisation not found" });
+      return { code: org[0].supportCode ?? null, orgName: org[0].name };
+    }),
   }),
 
   // Organization Users router (for org owners to manage their team)
@@ -1555,6 +1737,164 @@ ${input.message}
       .mutation(async ({ input, ctx }) => {
         await dbHelpers.deleteShippingAddress(input.id, ctx.organizationId);
         return { success: true };
+      }),
+  }),
+
+  // ---------------------------------------------------------------------------
+  // Billing — trial signup, Stripe checkout, subscription status
+  // ---------------------------------------------------------------------------
+  billing: router({
+
+    /** Start a 7-day free trial — creates org + owner user immediately, no payment required */
+    startTrial: publicProcedure
+      .input(z.object({
+        ownerName: z.string().min(1),
+        email: z.string().email(),
+        companyName: z.string().min(1),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+        // Check email not already registered
+        const existing = await db.select().from(users).where(eq(users.email, input.email.toLowerCase())).limit(1);
+        if (existing.length > 0) {
+          throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists. Please log in." });
+        }
+
+        // Create org in trial state
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 7);
+        const supportCode = String(Math.floor(100000 + Math.random() * 900000));
+
+        const [orgResult] = await db.insert(organizations).values({
+          name: input.companyName,
+          subscriptionType: "monthly",
+          subscriptionStatus: "trial",
+          subscriptionEndDate: trialEnd,
+          userLimit: 3, // 3 seats during trial — creates upsell pressure on expiry
+          supportCode,
+        });
+        const orgId = Number(orgResult.insertId);
+
+        // Create owner user directly (correct argument order)
+        const passwordHash = await customAuth.hashPassword(input.password);
+        await db.insert(users).values({
+          email: input.email.toLowerCase(),
+          passwordHash,
+          name: input.ownerName,
+          loginMethod: "email",
+          role: "org_owner",
+          status: "active",
+          organizationId: orgId,
+        });
+
+        // Send welcome email
+        const html = `
+          <html><body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #1a5c5a;">Welcome to TradeFlow!</h2>
+            <p>Hi ${input.ownerName},</p>
+            <p>Your 7-day free trial has started. You can log in now and start quoting straight away.</p>
+            <p style="margin: 24px 0;">
+              <a href="${ENV.appUrl}/login" style="background: #2aacaa; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                Log in to TradeFlow
+              </a>
+            </p>
+            <p style="color: #666; font-size: 14px;">
+              Your trial ends on <strong>${trialEnd.toLocaleDateString("en-AU", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</strong>.
+              You can upgrade to a paid plan any time from your account settings.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="color: #999; font-size: 12px;">TradeFlow by DevEdge · <a href="${ENV.appUrl}">tradeflow.devedge.com.au</a></p>
+          </body></html>
+        `;
+
+        await sendSystemEmail({
+          to: input.email,
+          subject: "Your TradeFlow trial has started — log in now",
+          html,
+          text: `Welcome to TradeFlow, ${input.ownerName}! Log in at ${ENV.appUrl}/login. Your trial ends ${trialEnd.toLocaleDateString("en-AU")}.`,
+        });
+
+        return { success: true };
+      }),
+
+    /** Create a Stripe Checkout session for a brand-new customer paying upfront */
+    createCheckoutSession: publicProcedure
+      .input(z.object({
+        plan: z.enum(["monthly", "annual"]),
+        email: z.string().email(),
+        companyName: z.string().min(1),
+        ownerName: z.string().min(1),
+        seatOption: z.discriminatedUnion("type", [
+          z.object({ type: z.literal("none") }),
+          z.object({ type: z.literal("pack4") }),
+          z.object({ type: z.literal("pack9") }),
+          z.object({ type: z.literal("custom"), extra: z.number().min(1).max(50) }),
+        ]).default({ type: "none" }),
+      }))
+      .mutation(async ({ input }) => {
+        const url = await createNewSignupCheckoutSession(input);
+        return { url };
+      }),
+
+    /** Upgrade an existing trial org to paid — authenticated */
+    createUpgradeSession: orgOwnerProcedure
+      .input(z.object({
+        plan: z.enum(["monthly", "annual"]),
+        seatOption: z.discriminatedUnion("type", [
+          z.object({ type: z.literal("none") }),
+          z.object({ type: z.literal("pack4") }),
+          z.object({ type: z.literal("pack9") }),
+          z.object({ type: z.literal("custom"), extra: z.number().min(1).max(50) }),
+        ]).default({ type: "none" }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const url = await createUpgradeCheckoutSession({
+          plan: input.plan,
+          seatOption: input.seatOption as SeatOption,
+          email: ctx.user.email,
+          companyName: ctx.organization.name,
+          organizationId: ctx.organizationId,
+          stripeCustomerId: ctx.organization.stripeCustomerId,
+        });
+        return { url };
+      }),
+
+    /** Open Stripe billing portal for paid subscribers */
+    createPortalSession: orgOwnerProcedure
+      .mutation(async ({ ctx }) => {
+        if (!ctx.organization.stripeCustomerId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "No billing account linked. Please upgrade first." });
+        }
+        const url = await createPortalSession({ stripeCustomerId: ctx.organization.stripeCustomerId });
+        return { url };
+      }),
+
+    /** Get current billing status for Settings page */
+    getStatus: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (!ctx.organizationId) return null;
+        const db = await getDb();
+        if (!db) return null;
+        const org = await db.select().from(organizations).where(eq(organizations.id, ctx.organizationId)).limit(1);
+        if (!org.length) return null;
+        const o = org[0];
+        const now = new Date();
+        const endDate = o.subscriptionEndDate ? new Date(o.subscriptionEndDate) : null;
+        const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null;
+        return {
+          status: o.subscriptionStatus,
+          type: o.subscriptionType,
+          endDate: endDate?.toISOString() ?? null,
+          daysLeft,
+          stripeCustomerId: o.stripeCustomerId,
+          seats: o.userLimit,
+          isTrialing: o.subscriptionStatus === "trial",
+          isPaid: o.subscriptionStatus === "active",
+          isExpired: o.subscriptionStatus === "expired" || o.subscriptionStatus === "cancelled" || (endDate !== null && endDate < now),
+        };
       }),
   }),
 });

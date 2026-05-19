@@ -55,7 +55,7 @@ export default function Register() {
         style={{ background: "var(--sidebar)" }}
       >
         <div>
-          <img src="/logo.png" alt="TradeFlow" className="h-9 object-contain" />
+          <img src="/logo.svg" alt="TradeFlow" className="h-8 object-contain" style={{ filter: "brightness(0) invert(1)" }} />
         </div>
         <div className="space-y-4">
           <p
@@ -78,7 +78,7 @@ export default function Register() {
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden">
-            <img src="/logo.png" alt="TradeFlow" className="h-8 object-contain" />
+            <img src="/logo.svg" alt="TradeFlow" className="h-7 object-contain" />
           </div>
 
           <div className="space-y-1">

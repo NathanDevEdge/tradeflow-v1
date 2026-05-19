@@ -28,6 +28,12 @@ import PurchaseOrderDetailNew from "./pages/PurchaseOrderDetailNew";
 import Settings from "./pages/Settings";
 import TeamManagement from "./pages/TeamManagement";
 import OrganizationUsers from "./pages/OrganizationUsers";
+import Subscribe from "./pages/Subscribe";
+import TrialStarted from "./pages/TrialStarted";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import TrialExpired from "./pages/TrialExpired";
+import AdminPanel from "./pages/admin/AdminPanel";
+import SupportPage from "./pages/SupportPage";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isAuthenticated, loading } = useAuth();
@@ -58,10 +64,21 @@ function Router() {
       
       {/* Hidden admin OAuth route with pin */}
       <Route path="/admin/login/9967" component={AdminLogin} />
+
+      {/* Super admin panel — role guard is inside AdminPanel */}
+      <Route path="/admin" component={AdminPanel} />
       
       {/* Public landing page */}
       <Route path="/">
         {() => <LandingPage />}
+      </Route>
+
+      {/* Signup / billing flows */}
+      <Route path="/subscribe" component={Subscribe} />
+      <Route path="/trial-started" component={TrialStarted} />
+      <Route path="/payment-success" component={PaymentSuccess} />
+      <Route path="/trial-expired">
+        {() => <ProtectedRoute component={TrialExpired} />}
       </Route>
       
       {/* Protected routes */}
@@ -111,6 +128,9 @@ function Router() {
         {() => <ProtectedRoute component={TeamManagement} />}
       </Route>
       <Route path="/organization/users" component={() => <ProtectedRoute component={OrganizationUsers} />} />
+      <Route path="/support">
+        {() => <ProtectedRoute component={SupportPage} />}
+      </Route>
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

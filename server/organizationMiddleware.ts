@@ -44,19 +44,20 @@ export const orgProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   if (organization.subscriptionStatus === "expired" || organization.subscriptionStatus === "cancelled") {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Organization subscription is not active. Please renew your subscription.",
+      message: "SUBSCRIPTION_EXPIRED",
     });
   }
-  
-  // Check subscription end date for non-indefinite subscriptions
+
+  // Check subscription end date for non-indefinite subscriptions (includes trial)
   if (organization.subscriptionType !== "indefinite" && organization.subscriptionEndDate) {
     const now = new Date();
     const endDate = new Date(organization.subscriptionEndDate);
-    
+
     if (endDate < now) {
+      const isTrial = organization.subscriptionStatus === "trial";
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Organization subscription has expired. Please renew your subscription.",
+        message: isTrial ? "TRIAL_EXPIRED" : "SUBSCRIPTION_EXPIRED",
       });
     }
   }

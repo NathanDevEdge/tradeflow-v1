@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,6 +27,27 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import TrialBanner from "./TrialBanner";
+
+function ImpersonationBanner() {
+  const { data: me } = trpc.auth.me.useQuery(undefined, { staleTime: 60_000 });
+  const exit = trpc.superAdmin.exitImpersonation.useMutation({
+    onSuccess: () => { window.location.href = "/admin"; },
+  });
+  if (!me?.isImpersonating) return null;
+  return (
+    <div className="bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between text-sm font-medium sticky top-0 z-50">
+      <span>👁 Impersonating org — you are viewing the app as this organisation</span>
+      <button
+        onClick={() => exit.mutate()}
+        disabled={exit.isPending}
+        className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+      >
+        {exit.isPending ? "Exiting…" : "Exit impersonation →"}
+      </button>
+    </div>
+  );
+}
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", adminOnly: false, orgOwnerOnly: false, superAdminOnly: false },
@@ -37,8 +59,9 @@ const menuItems = [
   { icon: Settings, label: "Settings", path: "/settings", adminOnly: false, orgOwnerOnly: false, superAdminOnly: false },
   { icon: UserCog, label: "Team Members", path: "/organization/users", adminOnly: false, orgOwnerOnly: true, superAdminOnly: false },
   { icon: Users, label: "Team Management", path: "/team", adminOnly: false, orgOwnerOnly: true, superAdminOnly: false },
-  { icon: Shield, label: "Super Admin", path: "/admin/super", adminOnly: false, orgOwnerOnly: false, superAdminOnly: true },
+  { icon: Shield, label: "Admin Panel", path: "/admin", adminOnly: false, orgOwnerOnly: false, superAdminOnly: true },
   { icon: Mail, label: "Contact Inbox", path: "/admin/contacts", adminOnly: true, orgOwnerOnly: false, superAdminOnly: false },
+  { icon: Shield, label: "Support", path: "/support", adminOnly: false, orgOwnerOnly: true, superAdminOnly: false },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -165,7 +188,7 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <img src="/logo.png" alt="TradeFlow" className="h-8 object-contain" />
+                  <img src="/logo.svg" alt="TradeFlow" className="h-7 object-contain" style={{ filter: "brightness(0) invert(1)" }} />
                 </div>
               ) : null}
             </div>
@@ -258,6 +281,8 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
+        <ImpersonationBanner />
+        <TrialBanner />
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>
     </>

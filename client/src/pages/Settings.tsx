@@ -7,11 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Upload, Building2, Lock } from "lucide-react";
+import { Upload, Building2, Lock, CreditCard } from "lucide-react";
 
 export default function Settings() {
   const { data: settings, isLoading } = trpc.companySettings.get.useQuery();
+  const { data: billing } = trpc.billing.getStatus.useQuery(undefined, { staleTime: 60_000 });
   const utils = trpc.useUtils();
+
+  const createPortal = trpc.billing.createPortalSession.useMutation({
+    onSuccess: (data) => { window.location.href = data.url; },
+    onError: (err) => toast.error(err.message),
+  });
   
   const [companyName, setCompanyName] = useState("");
   const [abn, setAbn] = useState("");
@@ -273,6 +279,64 @@ export default function Settings() {
           </CardContent>
         </Card>
         
+        {/* Billing */}
+        {billing && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Subscription
+              </CardTitle>
+              <CardDescription>
+                Your current plan and billing status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                <div>
+                  <p className="text-sm font-medium">
+                    {billing.isTrialing
+                      ? `Free Trial — ${billing.daysLeft} day${billing.daysLeft === 1 ? "" : "s"} remaining`
+                      : billing.isPaid
+                      ? `${billing.type === "annual" ? "Annual" : "Monthly"} plan — active`
+                      : "Subscription expired"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {billing.seats} seat{billing.seats !== 1 ? "s" : ""}
+                    {billing.endDate ? ` · ${billing.isTrialing ? "Trial ends" : billing.isPaid ? "Renews" : "Expired"} ${new Date(billing.endDate).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}` : ""}
+                  </p>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  billing.isPaid ? "bg-primary/10 text-primary" :
+                  billing.isTrialing ? "bg-amber-100 text-amber-800" :
+                  "bg-destructive/10 text-destructive"
+                }`}>
+                  {billing.isPaid ? "Active" : billing.isTrialing ? "Trial" : "Expired"}
+                </span>
+              </div>
+
+              {billing.isTrialing && (
+                <Button
+                  className="w-full"
+                  onClick={() => { window.location.href = "/subscribe?upgrade=1"; }}
+                >
+                  Choose a plan & upgrade →
+                </Button>
+              )}
+
+              {billing.isPaid && billing.stripeCustomerId && (
+                <Button
+                  variant="outline"
+                  disabled={createPortal.isPending}
+                  onClick={() => createPortal.mutate()}
+                >
+                  {createPortal.isPending ? "Loading…" : "Manage billing & invoices"}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Password Change */}
         <Card>
           <CardHeader>

@@ -8,8 +8,12 @@ export const organizations = mysqlTable("organizations", {
   name: varchar("name", { length: 255 }).notNull(),
   subscriptionType: mysqlEnum("subscriptionType", ["monthly", "annual", "indefinite"]).default("monthly"),
   subscriptionEndDate: timestamp("subscriptionEndDate"),
-  subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "expired", "cancelled"]).default("active"),
+  subscriptionStatus: mysqlEnum("subscriptionStatus", ["active", "expired", "cancelled", "trial"]).default("trial"),
   userLimit: int("userLimit").default(5).notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  supportCode: varchar("supportCode", { length: 6 }).unique(),
+  suspended: int("suspended").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

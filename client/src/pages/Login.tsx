@@ -38,7 +38,7 @@ export default function Login() {
         style={{ background: "var(--sidebar)" }}
       >
         <div>
-          <img src="/logo.svg" alt="TradeFlow" className="h-8 object-contain" style={{ filter: "brightness(0) invert(1)" }} />
+          <a href="/"><img src="/logo.svg" alt="TradeFlow" className="h-8 object-contain" style={{ filter: "brightness(0) invert(1)" }} /></a>
         </div>
 
         <div className="space-y-4">
@@ -64,7 +64,7 @@ export default function Login() {
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden">
-            <img src="/logo.svg" alt="TradeFlow" className="h-7 object-contain" />
+            <a href="/"><img src="/logo.svg" alt="TradeFlow" className="h-7 object-contain" /></a>
           </div>
 
           <div className="space-y-1">

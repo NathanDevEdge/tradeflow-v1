@@ -108,7 +108,7 @@ export default function Subscribe() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-          <img src="/logo.svg" alt="TradeFlow" className="h-7 object-contain" style={{ filter: "brightness(0) invert(1)" }} />
+          <a href="/"><img src="/logo.svg" alt="TradeFlow" className="h-7 object-contain" style={{ filter: "brightness(0) invert(1)" }} /></a>
         </div>
 
         <div className="space-y-8">
@@ -152,7 +152,7 @@ export default function Subscribe() {
             <button onClick={() => setLocation("/")} className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <img src="/logo.svg" alt="TradeFlow" className="h-6 object-contain" />
+            <a href="/"><img src="/logo.svg" alt="TradeFlow" className="h-6 object-contain" /></a>
           </div>
 
           {/* Flow toggle */}

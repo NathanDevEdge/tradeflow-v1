@@ -11,7 +11,7 @@ import {
   FileCheck,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import React from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,9 +97,9 @@ const faqs = [
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
-  const [contactForm, setContactForm] = React.useState({ name: "", email: "", company: "", message: "" });
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submitSuccess, setSubmitSuccess] = React.useState(false);
+  const [contactForm, setContactForm] = useState({ name: "", email: "", company: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const submitMutation = trpc.contact.submit.useMutation({
     onSuccess: () => {

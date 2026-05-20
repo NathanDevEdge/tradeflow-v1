@@ -59,6 +59,198 @@ function statusClass(status: string) {
   }
 }
 
+// ── Inline quote document renderer ───────────────────────────────────────────
+// Renders the quote as a styled A4-like HTML document — no iframe, no external
+// viewer. Always in sync with the latest data.
+function QuotePreviewDocument({
+  quote,
+  customer,
+  settings,
+}: {
+  quote: any;
+  customer: any;
+  settings: any;
+}) {
+  const disc = parseFloat((quote as any).discountPercent ?? "0") || 0;
+  const subtotal = (quote.items ?? []).reduce(
+    (sum: number, item: any) =>
+      sum + parseFloat(item.quantity) * parseFloat(item.sellPrice),
+    0
+  );
+  const discount = subtotal * (disc / 100);
+  const discountedSubtotal = subtotal - discount;
+  const gst = discountedSubtotal * 0.1;
+  const total = discountedSubtotal + gst;
+  const expiresAt = (quote as any).expiresAt;
+  const notes = (quote as any).notes;
+  const terms = (quote as any).terms;
+
+  return (
+    <div className="bg-muted/40 rounded-xl p-6 md:p-10">
+      <div className="max-w-3xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden">
+
+        {/* ── Document header ── */}
+        <div className="bg-[#2563eb] px-8 py-7 flex justify-between items-start gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            {settings?.logoUrl && (
+              <img
+                src={settings.logoUrl}
+                alt="Logo"
+                className="h-14 w-14 object-contain flex-shrink-0 bg-white/10 rounded p-1"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-white font-bold text-lg leading-tight truncate">
+                {settings?.companyName || "Your Company"}
+              </p>
+              {settings?.abn && (
+                <p className="text-blue-200 text-xs mt-0.5">ABN: {settings.abn}</p>
+              )}
+              {settings?.address && (
+                <p className="text-blue-200 text-xs mt-0.5 whitespace-pre-line leading-relaxed">
+                  {settings.address}
+                </p>
+              )}
+              {settings?.phone && (
+                <p className="text-blue-200 text-xs">{settings.phone}</p>
+              )}
+            </div>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-white font-bold text-3xl tracking-tight">QUOTE</p>
+            <p className="text-blue-200 text-sm mt-0.5">{quote.quoteNumber}</p>
+            <p className="text-blue-200 text-xs mt-0.5">
+              Date: {new Date(quote.createdAt).toLocaleDateString("en-AU")}
+            </p>
+            {expiresAt && (
+              <p className="text-blue-200 text-xs">
+                Valid until: {new Date(expiresAt).toLocaleDateString("en-AU")}
+              </p>
+            )}
+            <span className="inline-block bg-white text-[#2563eb] text-[10px] font-bold px-2.5 py-0.5 rounded mt-2 uppercase tracking-wide">
+              {quote.status === "accepted" ? "WON" : quote.status === "declined" ? "LOST" : quote.status === "sent" ? "SENT" : "DRAFT"}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-8 py-6 space-y-6">
+
+          {/* ── Customer card ── */}
+          <div className="bg-muted/50 rounded-lg p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">
+              Quote For
+            </p>
+            <p className="font-bold text-foreground">{customer?.companyName || "—"}</p>
+            {customer?.contactName && (
+              <p className="text-sm text-muted-foreground">{customer.contactName}</p>
+            )}
+            {customer?.email && (
+              <p className="text-sm text-muted-foreground">{customer.email}</p>
+            )}
+            {customer?.billingAddress && (
+              <p className="text-sm text-muted-foreground whitespace-pre-line mt-0.5">
+                {customer.billingAddress}
+              </p>
+            )}
+          </div>
+
+          {/* ── Line items ── */}
+          <div className="rounded-lg overflow-hidden border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="text-left px-4 py-2.5 font-semibold text-foreground">Item</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-foreground w-16">Qty</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-foreground w-28">Unit Price</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-foreground w-28">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(quote.items ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                      No items added yet
+                    </td>
+                  </tr>
+                ) : (
+                  (quote.items ?? []).map((item: any, i: number) => (
+                    <tr key={item.id} className={i % 2 === 0 ? "bg-white" : "bg-muted/20"}>
+                      <td className="px-4 py-2.5 text-foreground">
+                        <span className="font-medium">{item.itemName}</span>
+                        {item.skuCode && (
+                          <span className="text-xs text-muted-foreground ml-2">({item.skuCode})</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+                        {parseFloat(item.quantity) % 1 === 0
+                          ? parseInt(item.quantity)
+                          : parseFloat(item.quantity).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
+                        ${parseFloat(item.sellPrice).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+                        ${(parseFloat(item.quantity) * parseFloat(item.sellPrice)).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── Totals ── */}
+          <div className="flex justify-end">
+            <div className="w-64 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal (ex GST)</span>
+                <span className="tabular-nums">${subtotal.toFixed(2)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Discount ({disc}%)</span>
+                  <span className="tabular-nums text-destructive">−${discount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">GST (10%)</span>
+                <span className="tabular-nums">${gst.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-base border-t pt-2 mt-1">
+                <span>Total (inc GST)</span>
+                <span className="tabular-nums text-lg">${total.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Notes & Terms ── */}
+          {(notes || terms) && (
+            <div className="border-t pt-4 space-y-3">
+              {notes && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                    Notes
+                  </p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{notes}</p>
+                </div>
+              )}
+              {terms && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                    Terms &amp; Conditions
+                  </p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{terms}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QuoteDetail() {
   const [, params] = useRoute("/quotes/:id");
   const [, setLocation] = useLocation();
@@ -99,27 +291,21 @@ export default function QuoteDetail() {
   // Preview vs edit mode
   const [isEditing, setIsEditing] = useState(true);
 
-  // PDF URL — capture directly from mutation result so we don't depend on
-  // cache re-fetching before the iframe renders
-  const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
-
   // Queries
   const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
   const { data: customer } = trpc.customers.get.useQuery(
     { id: quote?.customerId || 0 },
     { enabled: !!quote?.customerId }
   );
+  const { data: companySettings } = trpc.companySettings.get.useQuery();
   const { data: allProducts } = trpc.pricelistItems.listAll.useQuery();
   const { data: pricelists } = trpc.pricelists.list.useQuery();
   const { data: suppliers } = trpc.suppliers.list.useQuery();
   const utils = trpc.useUtils();
 
-  // Non-draft quotes open in preview mode by default; seed localPdfUrl from stored value
+  // Non-draft quotes open in preview mode by default
   useEffect(() => {
-    if (quote) {
-      setIsEditing(quote.status === "draft");
-      if (quote.pdfUrl) setLocalPdfUrl(quote.pdfUrl);
-    }
+    if (quote) setIsEditing(quote.status === "draft");
   }, [quote?.id]); // run once when quote first loads
 
   // Sync local form state from fetched quote
@@ -378,12 +564,13 @@ export default function QuoteDetail() {
     }
     setIsConfirming(true);
     try {
-      const { url } = await generatePDFMutation.mutateAsync({ id: quoteId });
-      if (url) setLocalPdfUrl(url);
+      // Mark as sent first so the preview shows the right status immediately
       await updateStatusMutation.mutateAsync({ id: quoteId, status: "sent" });
-      utils.quotes.get.invalidate({ id: quoteId }); // background refresh, don't await
       setIsEditing(false);
       toast.success("Quote confirmed");
+      // Generate PDF in the background for download / email
+      generatePDFMutation.mutate({ id: quoteId });
+      utils.quotes.get.invalidate({ id: quoteId });
     } catch (err: any) {
       toast.error(err.message ?? "Something went wrong");
     } finally {
@@ -392,17 +579,11 @@ export default function QuoteDetail() {
   };
 
   const handleSaveAndPreview = async () => {
-    setIsConfirming(true);
-    try {
-      const { url } = await generatePDFMutation.mutateAsync({ id: quoteId });
-      if (url) setLocalPdfUrl(url);
-      utils.quotes.get.invalidate({ id: quoteId }); // background refresh, don't await
-      setIsEditing(false);
-    } catch (err: any) {
-      toast.error(err.message ?? "Something went wrong");
-    } finally {
-      setIsConfirming(false);
-    }
+    // Switch to preview immediately — the HTML view renders from live data
+    setIsEditing(false);
+    // Regenerate PDF in the background so download / email stays fresh
+    generatePDFMutation.mutate({ id: quoteId });
+    utils.quotes.get.invalidate({ id: quoteId });
   };
 
   // Sync editingItems when quote items change
@@ -571,28 +752,13 @@ export default function QuoteDetail() {
           </div>
         </div>
 
-        {/* ── PDF Preview (non-draft, preview mode) ── */}
+        {/* ── Quote document preview (non-draft, preview mode) ── */}
         {!isEditing && (
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              {localPdfUrl ? (
-                <iframe
-                  src={localPdfUrl}
-                  className="w-full border-0 rounded-lg"
-                  style={{ height: "calc(100vh - 160px)", minHeight: 600 }}
-                  title={`Quote ${quote.quoteNumber}`}
-                />
-              ) : (
-                <div className="py-16 text-center text-muted-foreground space-y-3">
-                  <p className="text-sm">No PDF generated yet.</p>
-                  <Button size="sm" onClick={handleSaveAndPreview} disabled={isConfirming}>
-                    <CheckCheck className="mr-1.5 h-4 w-4" />
-                    {isConfirming ? "Generating…" : "Generate Preview"}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <QuotePreviewDocument
+            quote={quote}
+            customer={customer}
+            settings={companySettings}
+          />
         )}
 
         {/* ── Line Items Card (edit mode only) ── */}
@@ -1078,22 +1244,14 @@ export default function QuoteDetail() {
         // Confirmed quote in edit mode: save changes and go back to preview
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-4 px-6 -mx-6 flex items-center justify-end gap-3 mt-6">
           <span className="text-xs text-muted-foreground mr-auto">
-            Changes are saved automatically. Click Save &amp; Preview to update the PDF.
+            Changes save automatically. Preview shows the latest saved data.
           </span>
-          <Button
-            variant="outline"
-            onClick={() => setIsEditing(false)}
-            disabled={isConfirming}
-          >
-            Discard Changes
+          <Button variant="outline" onClick={() => setIsEditing(false)}>
+            Cancel
           </Button>
-          <Button
-            onClick={handleSaveAndPreview}
-            disabled={isConfirming}
-            className="gap-1.5"
-          >
+          <Button onClick={handleSaveAndPreview} className="gap-1.5">
             <CheckCheck className="h-4 w-4" />
-            {isConfirming ? "Saving…" : "Save & Preview"}
+            Save &amp; Preview
           </Button>
         </div>
       )}

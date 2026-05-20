@@ -88,7 +88,7 @@ async function startServer() {
               fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
               imgSrc: ["'self'", "data:", "https:", "blob:"],
               connectSrc: ["'self'", "https://api.stripe.com"],
-              frameSrc: ["https://js.stripe.com", "https://hooks.stripe.com", "https://*.s3.amazonaws.com", "https://*.s3.ap-southeast-2.amazonaws.com"],
+              frameSrc: ["https://js.stripe.com", "https://hooks.stripe.com"],
               objectSrc: ["'none'"],
               upgradeInsecureRequests: [],
             },

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
-import { Plus, Edit, Trash2, Users } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Search } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 export default function Customers() {
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     companyName: "",
@@ -26,6 +27,17 @@ export default function Customers() {
   
   const { data: customers, isLoading } = trpc.customers.list.useQuery();
   const utils = trpc.useUtils();
+
+  const filteredCustomers = customers?.filter(c => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      c.companyName.toLowerCase().includes(q) ||
+      (c.contactName && c.contactName.toLowerCase().includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.toLowerCase().includes(q))
+    );
+  });
   
   const createMutation = trpc.customers.create.useMutation({
     onSuccess: () => {
@@ -110,12 +122,21 @@ export default function Customers() {
       <div className="space-y-4">
         <div className="flex items-center gap-3 pb-4 border-b">
           <h1 className="text-base font-semibold">Customers</h1>
-          {!isLoading && customers && (
+          {!isLoading && filteredCustomers && (
             <span className="text-xs text-muted-foreground tabular-nums">
-              {customers.length}
+              {filteredCustomers.length}
             </span>
           )}
           <div className="flex-1" />
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search customers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-sm w-52"
+            />
+          </div>
           <Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) resetForm(); }}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -203,7 +224,7 @@ export default function Customers() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" role="status" aria-label="Loading…" />
           </div>
-        ) : customers && customers.length > 0 ? (
+        ) : filteredCustomers && filteredCustomers.length > 0 ? (
           <div className="border rounded-lg overflow-hidden">
             <Table>
                 <TableHeader>
@@ -216,7 +237,7 @@ export default function Customers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {customers.map((customer) => (
+                  {filteredCustomers.map((customer) => (
                     <TableRow 
                       key={customer.id}
                       className="cursor-pointer hover:bg-muted/50"
@@ -259,14 +280,18 @@ export default function Customers() {
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
-            <p className="text-sm font-medium mb-1">No customers yet</p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Create your first customer to get started
+            <p className="text-sm font-medium mb-1">
+              {searchQuery ? "No customers match your search" : "No customers yet"}
             </p>
-            <Button size="sm" onClick={() => setOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-              New Customer
-            </Button>
+            <p className="text-xs text-muted-foreground mb-4">
+              {searchQuery ? "Try a different search term" : "Create your first customer to get started"}
+            </p>
+            {!searchQuery && (
+              <Button size="sm" onClick={() => setOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                New Customer
+              </Button>
+            )}
           </div>
         )}
       </div>

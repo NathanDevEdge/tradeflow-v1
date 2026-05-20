@@ -301,13 +301,32 @@ export async function getQuotesByCustomer(customerId: number, organizationId: nu
   return db.select().from(quotes).where(and(eq(quotes.customerId, customerId), eq(quotes.organizationId, organizationId))).orderBy(desc(quotes.createdAt));
 }
 
-export async function getQuoteById(id: number, organizationId: number): Promise<(Quote & { items: QuoteItem[] }) | undefined> {
+export async function getQuoteById(id: number, organizationId: number): Promise<(Quote & { items: (QuoteItem & { skuCode: string | null })[] }) | undefined> {
   const db = await getDb();
   if (!db) return undefined;
   const quoteResult = await db.select().from(quotes).where(and(eq(quotes.id, id), eq(quotes.organizationId, organizationId))).limit(1);
   if (!quoteResult[0]) return undefined;
-  
-  const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, id));
+
+  // JOIN with pricelist_items to include skuCode without requiring a schema change on quoteItems
+  const items = await db
+    .select({
+      id: quoteItems.id,
+      quoteId: quoteItems.quoteId,
+      pricelistItemId: quoteItems.pricelistItemId,
+      itemName: quoteItems.itemName,
+      quantity: quoteItems.quantity,
+      sellPrice: quoteItems.sellPrice,
+      buyPrice: quoteItems.buyPrice,
+      margin: quoteItems.margin,
+      lineTotal: quoteItems.lineTotal,
+      createdAt: quoteItems.createdAt,
+      updatedAt: quoteItems.updatedAt,
+      skuCode: pricelistItems.skuCode,
+    })
+    .from(quoteItems)
+    .leftJoin(pricelistItems, eq(quoteItems.pricelistItemId, pricelistItems.id))
+    .where(eq(quoteItems.quoteId, id));
+
   return { ...quoteResult[0], items };
 }
 
@@ -618,4 +637,54 @@ export async function deleteShippingAddress(id: number, organizationId: number) 
       eq(shippingAddresses.id, id),
       eq(shippingAddresses.organizationId, organizationId)
     ));
+}
+
+// Dashboard stats — aggregated numbers for the Home page
+export async function getDashboardStats(organizationId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // All quotes for this org
+  const allQuotes = await db.select().from(quotes).where(eq(quotes.organizationId, organizationId));
+  const allPOs = await db.select().from(purchaseOrders).where(eq(purchaseOrders.organizationId, organizationId));
+
+  const quotesThisMonth = allQuotes.filter(q => new Date(q.createdAt) >= startOfMonth);
+  const sentThisMonth = quotesThisMonth.filter(q => q.status !== "draft");
+  const wonThisMonth = quotesThisMonth.filter(q => q.status === "accepted");
+  const winRate = sentThisMonth.length > 0 ? Math.round((wonThisMonth.length / sentThisMonth.length) * 100) : 0;
+  const revenueThisMonth = wonThisMonth.reduce((sum, q) => sum + parseFloat(q.totalAmount || "0"), 0);
+  const openPOs = allPOs.filter(p => p.status === "draft" || p.status === "sent").length;
+  const unpaidInvoices = allQuotes.filter(q => q.status === "accepted" && (q as any).invoicedAt && !(q as any).paidAt).length;
+
+  // Recent activity: last 8 quotes or POs sorted by updatedAt
+  const recentQuotes = allQuotes.slice(0, 20).map(q => ({
+    type: "quote" as const,
+    id: q.id,
+    number: q.quoteNumber,
+    status: q.status,
+    updatedAt: new Date(q.updatedAt),
+  }));
+  const recentPOs = allPOs.slice(0, 10).map(p => ({
+    type: "po" as const,
+    id: p.id,
+    number: p.poNumber,
+    status: p.status,
+    updatedAt: new Date(p.updatedAt),
+  }));
+  const recentActivity = [...recentQuotes, ...recentPOs]
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .slice(0, 8);
+
+  return {
+    quotesThisMonth: quotesThisMonth.length,
+    winRate,
+    revenueThisMonth,
+    openPOs,
+    unpaidInvoices,
+    totalQuotes: allQuotes.length,
+    recentActivity,
+  };
 }

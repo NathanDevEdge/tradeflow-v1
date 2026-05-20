@@ -12,7 +12,7 @@ import { getDb } from "./db";
 import { users, organizations } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { generateQuotePDF, generatePurchaseOrderPDF } from "./pdfgen"; // v2.0 PDF fixes - RENAMED MODULE
-import { sendPurchaseOrderEmail } from "./email";
+import { sendPurchaseOrderEmail, sendQuoteEmail } from "./email";
 import * as customAuth from "./customAuth";
 import * as admin from "./admin";
 import { SignJWT } from "jose";
@@ -481,9 +481,14 @@ export const appRouter = router({
   }),
 
   quotes: router({
-    list: orgProcedure.query(async ({ ctx }) => {
-      return await dbHelpers.getAllQuotes(ctx.organizationId);
-    }),
+    list: orgProcedure
+      .input(z.object({ customerId: z.number().optional() }).optional())
+      .query(async ({ input, ctx }) => {
+        if (input?.customerId) {
+          return await dbHelpers.getQuotesByCustomer(input.customerId, ctx.organizationId);
+        }
+        return await dbHelpers.getAllQuotes(ctx.organizationId);
+      }),
     
     get: orgProcedure
       .input(z.object({ id: z.number() }))
@@ -514,17 +519,27 @@ export const appRouter = router({
         id: z.number(),
         status: z.enum(["draft", "sent", "accepted", "declined"]).optional(),
         notes: z.string().optional(),
+        internalNotes: z.string().optional(),
+        terms: z.string().optional(),
+        expiresAt: z.string().optional(), // ISO date string or empty
+        discountPercent: z.number().min(0).max(100).optional(),
         pdfUrl: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { id, ...updates } = input;
-        const cleanUpdates: Record<string, string | null> = {};
-        
-        Object.entries(updates).forEach(([key, value]) => {
+        const { id, discountPercent, expiresAt, ...rest } = input;
+        const cleanUpdates: Record<string, any> = {};
+
+        Object.entries(rest).forEach(([key, value]) => {
           if (value !== undefined) {
             cleanUpdates[key] = value || null;
           }
         });
+        if (discountPercent !== undefined) {
+          cleanUpdates.discountPercent = discountPercent.toFixed(2);
+        }
+        if (expiresAt !== undefined) {
+          cleanUpdates.expiresAt = expiresAt ? new Date(expiresAt) : null;
+        }
 
         await dbHelpers.updateQuote(id, ctx.organizationId, cleanUpdates);
         return { success: true };
@@ -562,55 +577,71 @@ export const appRouter = router({
       }),
     
     addItem: orgProcedure
-      .input(z.object({
-        quoteId: z.number(),
-        pricelistItemId: z.number(),
-        quantity: z.number(),
-      }))
+      .input(z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("pricelist"),
+          quoteId: z.number(),
+          pricelistItemId: z.number(),
+          quantity: z.number(),
+        }),
+        z.object({
+          type: z.literal("custom"),
+          quoteId: z.number(),
+          itemName: z.string().min(1),
+          quantity: z.number(),
+          sellPrice: z.number().min(0),
+          buyPrice: z.number().min(0),
+        }),
+      ]))
       .mutation(async ({ input, ctx }) => {
-        // Get pricelist item details
-        const allItems = await dbHelpers.getAllPricelistItems(ctx.organizationId);
-        const pricelistItem = allItems.find(item => item.id === input.pricelistItemId);
-        
-        if (!pricelistItem) {
-          throw new Error("Pricelist item not found");
+        let itemName: string;
+        let sellPrice: number;
+        let buyPrice: number;
+        let pricelistItemId: number | null = null;
+
+        if (input.type === "pricelist") {
+          const allItems = await dbHelpers.getAllPricelistItems(ctx.organizationId);
+          const pricelistItem = allItems.find(item => item.id === input.pricelistItemId);
+          if (!pricelistItem) throw new Error("Pricelist item not found");
+          itemName = pricelistItem.itemName;
+          sellPrice = parseFloat(pricelistItem.sellPrice || pricelistItem.rrpExGst || "0");
+          buyPrice = parseFloat(pricelistItem.looseBuyPrice || "0");
+          pricelistItemId = input.pricelistItemId;
+        } else {
+          itemName = input.itemName;
+          sellPrice = input.sellPrice;
+          buyPrice = input.buyPrice;
         }
-        
-        const sellPrice = parseFloat(pricelistItem.sellPrice || pricelistItem.rrpExGst || "0");
-        const buyPrice = parseFloat(pricelistItem.looseBuyPrice || "0");
+
         const lineTotal = sellPrice * input.quantity;
         const margin = (sellPrice - buyPrice) * input.quantity;
-        
-        // Create quote item
+
         const item = await dbHelpers.createQuoteItem({
           quoteId: input.quoteId,
-          pricelistItemId: input.pricelistItemId,
-          itemName: pricelistItem.itemName,
+          pricelistItemId,
+          itemName,
           quantity: input.quantity.toString(),
           sellPrice: sellPrice.toString(),
           buyPrice: buyPrice.toString(),
           margin: margin.toString(),
           lineTotal: lineTotal.toString(),
         });
-        
+
         // Recalculate quote totals
         const items = await dbHelpers.getQuoteItems(input.quoteId);
         let totalAmount = 0;
         let totalMargin = 0;
-        
-        items.forEach(item => {
-          totalAmount += parseFloat(item.lineTotal);
-          totalMargin += parseFloat(item.margin);
+        items.forEach(i => {
+          totalAmount += parseFloat(i.lineTotal);
+          totalMargin += parseFloat(i.margin);
         });
-        
         const marginPercentage = totalAmount > 0 ? (totalMargin / totalAmount) * 100 : 0;
-        
         await dbHelpers.updateQuote(input.quoteId, ctx.organizationId, {
           totalAmount: totalAmount.toFixed(2),
           totalMargin: totalMargin.toFixed(2),
           marginPercentage: marginPercentage.toFixed(2),
         });
-        
+
         return item;
       }),
     
@@ -619,6 +650,87 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const url = await generateQuotePDF(input.id, ctx.organizationId);
         return { url };
+      }),
+
+    emailToCustomer: orgProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await sendQuoteEmail(input.id, ctx.organizationId);
+        return { success: true };
+      }),
+
+    convertToPO: orgProcedure
+      .input(z.object({
+        quoteId: z.number(),
+        supplierId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const quote = await dbHelpers.getQuoteById(input.quoteId, ctx.organizationId);
+        if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+
+        // Generate PO number
+        const allPOs = await dbHelpers.getAllPurchaseOrders(ctx.organizationId);
+        const poNumber = `PO${String(allPOs.length + 1).padStart(5, "0")}`;
+
+        const po = await dbHelpers.createPurchaseOrder({
+          organizationId: ctx.organizationId,
+          supplierId: input.supplierId,
+          poNumber,
+          status: "draft",
+          deliveryMethod: "pickup_from_supplier",
+          shippingAddress: null,
+          totalAmount: "0",
+          notes: quote.notes || null,
+          sourceQuoteId: input.quoteId,
+          pdfUrl: null,
+        } as any);
+
+        // Copy line items from quote (use buy prices, not sell prices)
+        let totalAmount = 0;
+        for (const item of quote.items) {
+          const buyPrice = parseFloat(item.buyPrice);
+          const quantity = parseFloat(item.quantity);
+          const lineTotal = buyPrice * quantity;
+          totalAmount += lineTotal;
+
+          await dbHelpers.createPurchaseOrderItem({
+            purchaseOrderId: po.id,
+            pricelistItemId: item.pricelistItemId || null,
+            itemName: item.itemName,
+            quantity: item.quantity,
+            buyPrice: item.buyPrice,
+            lineTotal: lineTotal.toFixed(2),
+          });
+        }
+
+        // Update PO total
+        await dbHelpers.updatePurchaseOrder(po.id, ctx.organizationId, {
+          totalAmount: totalAmount.toFixed(2),
+        });
+
+        return { poId: po.id };
+      }),
+
+    markInvoiced: orgProcedure
+      .input(z.object({
+        id: z.number(),
+        invoiceNumber: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await dbHelpers.updateQuote(input.id, ctx.organizationId, {
+          invoicedAt: new Date(),
+          invoiceNumber: input.invoiceNumber || null,
+        } as any);
+        return { success: true };
+      }),
+
+    markPaid: orgProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await dbHelpers.updateQuote(input.id, ctx.organizationId, {
+          paidAt: new Date(),
+        } as any);
+        return { success: true };
       }),
   }),
 
@@ -829,45 +941,57 @@ export const appRouter = router({
       }),
     
     addItem: orgProcedure
-      .input(z.object({
-        purchaseOrderId: z.number(),
-        pricelistItemId: z.number(),
-        quantity: z.number(),
-      }))
+      .input(z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("pricelist"),
+          purchaseOrderId: z.number(),
+          pricelistItemId: z.number(),
+          quantity: z.number(),
+        }),
+        z.object({
+          type: z.literal("custom"),
+          purchaseOrderId: z.number(),
+          itemName: z.string().min(1),
+          quantity: z.number(),
+          buyPrice: z.number().min(0),
+        }),
+      ]))
       .mutation(async ({ input, ctx }) => {
-        // Get pricelist item details
-        const allItems = await dbHelpers.getAllPricelistItems(ctx.organizationId);
-        const pricelistItem = allItems.find(item => item.id === input.pricelistItemId);
-        
-        if (!pricelistItem) {
-          throw new Error("Pricelist item not found");
+        let itemName: string;
+        let buyPrice: number;
+        let pricelistItemId: number | null = null;
+
+        if (input.type === "pricelist") {
+          const allItems = await dbHelpers.getAllPricelistItems(ctx.organizationId);
+          const pricelistItem = allItems.find(item => item.id === input.pricelistItemId);
+          if (!pricelistItem) throw new Error("Pricelist item not found");
+          itemName = pricelistItem.itemName;
+          buyPrice = parseFloat(pricelistItem.looseBuyPrice || "0");
+          pricelistItemId = input.pricelistItemId;
+        } else {
+          itemName = input.itemName;
+          buyPrice = input.buyPrice;
         }
-        
-        const buyPrice = parseFloat(pricelistItem.looseBuyPrice || "0");
+
         const lineTotal = buyPrice * input.quantity;
-        
-        // Create PO item
+
         const item = await dbHelpers.createPurchaseOrderItem({
           purchaseOrderId: input.purchaseOrderId,
-          pricelistItemId: input.pricelistItemId,
-          itemName: pricelistItem.itemName,
+          pricelistItemId,
+          itemName,
           quantity: input.quantity.toString(),
           buyPrice: buyPrice.toString(),
           lineTotal: lineTotal.toString(),
         });
-        
+
         // Recalculate PO totals
         const items = await dbHelpers.getPurchaseOrderItems(input.purchaseOrderId);
         let totalAmount = 0;
-        
-        items.forEach(item => {
-          totalAmount += parseFloat(item.lineTotal);
-        });
-        
+        items.forEach(i => { totalAmount += parseFloat(i.lineTotal); });
         await dbHelpers.updatePurchaseOrder(input.purchaseOrderId, ctx.organizationId, {
           totalAmount: totalAmount.toFixed(2),
         });
-        
+
         return item;
       }),
     
@@ -1745,6 +1869,12 @@ ${input.message}
         await db.delete(users).where(eq(users.id, input.userId));
         return { success: true };
       }),
+  }),
+
+  dashboard: router({
+    getStats: orgProcedure.query(async ({ ctx }) => {
+      return await dbHelpers.getDashboardStats(ctx.organizationId);
+    }),
   }),
 
   // Shipping addresses router

@@ -11,12 +11,23 @@ import { Plus, FileText, Eye, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+function quoteStatusLabel(status: string) {
+  switch (status) {
+    case "accepted": return "Won";
+    case "declined": return "Lost";
+    case "sent":     return "Sent";
+    default:         return "Draft";
+  }
+}
 
 export default function Quotes() {
   const [open, setOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quoteToDelete, setQuoteToDelete] = useState<number | null>(null);
   const [, setLocation] = useLocation();
@@ -89,8 +100,9 @@ export default function Quotes() {
     }
   };
 
-  // Filter quotes based on search query
+  // Filter quotes based on search query and status filter
   const filteredQuotes = quotes?.filter(quote => {
+    if (statusFilter !== "all" && quote.status !== statusFilter) return false;
     if (!searchQuery) return true;
     const customerName = getCustomerName(quote.customerId).toLowerCase();
     const quoteNumber = quote.quoteNumber.toLowerCase();
@@ -114,6 +126,18 @@ export default function Quotes() {
             </span>
           )}
           <div className="flex-1" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 text-sm w-32">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="accepted">Won</SelectItem>
+              <SelectItem value="declined">Lost</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
@@ -201,7 +225,7 @@ export default function Quotes() {
                       <TableCell>{getCustomerName(quote.customerId)}</TableCell>
                       <TableCell>
                         <span className={getStatusClass(quote.status)}>
-                          {quote.status}
+                          {quoteStatusLabel(quote.status)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -250,12 +274,12 @@ export default function Quotes() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="text-sm font-medium mb-1">
-              {searchQuery ? "No quotes match your search" : "No quotes yet"}
+              {(searchQuery || statusFilter !== "all") ? "No quotes match your filters" : "No quotes yet"}
             </p>
             <p className="text-xs text-muted-foreground mb-4">
-              {searchQuery ? "Try a different search term" : "Create your first quote to get started"}
+              {(searchQuery || statusFilter !== "all") ? "Try adjusting your search or filter" : "Create your first quote to get started"}
             </p>
-            {!searchQuery && (
+            {!(searchQuery || statusFilter !== "all") && (
               <Button size="sm" onClick={() => setOpen(true)}>
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
                 New Quote

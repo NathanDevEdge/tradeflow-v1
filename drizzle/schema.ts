@@ -206,6 +206,20 @@ export const quotes = mysqlTable("quotes", {
   totalMargin: decimal("totalMargin", { precision: 10, scale: 2 }).notNull().default("0"),
   marginPercentage: decimal("marginPercentage", { precision: 5, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
+  // Customer-facing terms & conditions (printed on PDF)
+  terms: text("terms"),
+  // Internal-only note — never shown on PDF or to customer
+  internalNotes: text("internalNotes"),
+  // Quote expiry date
+  expiresAt: timestamp("expiresAt"),
+  // Quote-level discount (percentage, e.g. 10 = 10%)
+  discountPercent: decimal("discountPercent", { precision: 5, scale: 2 }).default("0"),
+  // Timestamp of when the quote was emailed to the customer
+  sentAt: timestamp("sentAt"),
+  // Invoice / payment tracking (after quote is won)
+  invoiceNumber: varchar("invoiceNumber", { length: 100 }),
+  invoicedAt: timestamp("invoicedAt"),
+  paidAt: timestamp("paidAt"),
   pdfUrl: varchar("pdfUrl", { length: 500 }), // S3 URL for generated PDF
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -247,6 +261,8 @@ export const purchaseOrders = mysqlTable("purchase_orders", {
   shippingAddress: text("shippingAddress"), // Only used when deliveryMethod is in_store_delivery
   totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
+  // Traceability: which quote this PO was converted from (nullable)
+  sourceQuoteId: int("sourceQuoteId"),
   pdfUrl: varchar("pdfUrl", { length: 500 }), // S3 URL for generated PDF
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

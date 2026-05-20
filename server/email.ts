@@ -204,6 +204,123 @@ ${orgName}
 }
 
 /**
+ * Email a quote PDF to the customer.
+ * Uses the same SMTP/Resend logic as PO emails.
+ */
+export async function sendQuoteEmail(
+  quoteId: number,
+  organizationId: number
+): Promise<void> {
+  const quote = await db.getQuoteById(quoteId, organizationId);
+  if (!quote) throw new Error("Quote not found");
+  if (!quote.pdfUrl) throw new Error("Quote PDF must be generated before emailing");
+
+  const customer = await db.getCustomerById(quote.customerId, organizationId);
+  if (!customer) throw new Error("Customer not found");
+  if (!customer.email) throw new Error("Customer does not have an email address");
+
+  const orgSettings = await db.getCompanySettings(organizationId);
+  const orgName = orgSettings?.companyName ?? "TradeFlow";
+  const orgEmail = orgSettings?.email ?? null;
+
+  const subject = `Quote ${quote.quoteNumber} from ${orgName}`;
+  const contactName = customer.contactName || customer.companyName;
+
+  const html = `
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1e40af;">Quote ${quote.quoteNumber}</h2>
+        <p>Dear ${contactName},</p>
+        <p>Please find our quote ${quote.quoteNumber} attached for your review.</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="background: #f3f4f6;">
+            <td style="padding: 8px 12px; font-weight: 600;">Quote Number</td>
+            <td style="padding: 8px 12px;">${quote.quoteNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 12px; font-weight: 600;">Date</td>
+            <td style="padding: 8px 12px;">${new Date(quote.createdAt).toLocaleDateString("en-AU")}</td>
+          </tr>
+          <tr style="background: #f3f4f6;">
+            <td style="padding: 8px 12px; font-weight: 600;">Total (inc GST)</td>
+            <td style="padding: 8px 12px;">$${(parseFloat(quote.totalAmount || "0") * 1.1).toFixed(2)}</td>
+          </tr>
+          ${(quote as any).expiresAt ? `<tr>
+            <td style="padding: 8px 12px; font-weight: 600;">Valid Until</td>
+            <td style="padding: 8px 12px;">${new Date((quote as any).expiresAt).toLocaleDateString("en-AU")}</td>
+          </tr>` : ""}
+        </table>
+        ${(quote as any).terms ? `<p><strong>Terms & Conditions:</strong><br>${(quote as any).terms}</p>` : ""}
+        <div style="margin: 30px 0;">
+          <a href="${quote.pdfUrl}" style="display: inline-block; padding: 12px 24px; background-color: #1e40af; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
+            Download Quote PDF
+          </a>
+        </div>
+        <p>If you have any questions, please don't hesitate to contact us.</p>
+        <p>Kind regards,<br><strong>${orgName}</strong></p>
+      </body>
+    </html>
+  `;
+
+  const text = `
+Quote ${quote.quoteNumber} from ${orgName}
+
+Dear ${contactName},
+
+Please find our quote ${quote.quoteNumber} attached for your review.
+
+Quote Number: ${quote.quoteNumber}
+Date: ${new Date(quote.createdAt).toLocaleDateString("en-AU")}
+Total (inc GST): $${(parseFloat(quote.totalAmount || "0") * 1.1).toFixed(2)}
+${(quote as any).expiresAt ? `Valid Until: ${new Date((quote as any).expiresAt).toLocaleDateString("en-AU")}` : ""}
+
+Download the PDF here:
+${quote.pdfUrl}
+
+Kind regards,
+${orgName}
+  `.trim();
+
+  // Reuse the org SMTP / Resend logic from PO emails
+  const { smtpHost, smtpUser, smtpPassword, smtpFromEmail, smtpFromName, smtpPort, smtpSecure, companyName } = orgSettings ?? {};
+
+  if (smtpHost && smtpUser && smtpPassword && smtpFromEmail) {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort ?? 587,
+      secure: smtpSecure === 1,
+      auth: { user: smtpUser, pass: smtpPassword },
+    });
+    await transporter.sendMail({
+      from: `"${smtpFromName || companyName || orgName}" <${smtpFromEmail}>`,
+      to: customer.email,
+      subject,
+      html,
+      text,
+    });
+  } else {
+    if (!ENV.resendApiKey) {
+      console.warn("[Email] RESEND_API_KEY not set — logging quote email instead");
+      console.log("[Email] To:", customer.email, "| Subject:", subject);
+      return;
+    }
+    const resend = new Resend(ENV.resendApiKey);
+    const { error } = await resend.emails.send({
+      from: `${orgName} <${ENV.fromEmail}>`,
+      to: customer.email,
+      replyTo: orgEmail ?? ENV.fromEmail,
+      subject,
+      html,
+      text,
+    });
+    if (error) throw new Error(`Failed to send email: ${error.message}`);
+  }
+
+  // Mark the quote as having been emailed (update sentAt)
+  await db.updateQuote(quoteId, organizationId, { sentAt: new Date() } as any);
+}
+
+/**
  * Send a team invitation email.
  */
 export async function sendInvitationEmail(params: {

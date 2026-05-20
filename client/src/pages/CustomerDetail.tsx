@@ -18,10 +18,11 @@ export default function CustomerDetail() {
     { enabled: customerId > 0 }
   );
 
-  const { data: allQuotes, isLoading: quotesLoading } = trpc.quotes.list.useQuery();
-
-  // Filter quotes for this customer
-  const customerQuotes = allQuotes?.filter(q => q.customerId === customerId) || [];
+  // Fetch only this customer's quotes (server-side filter)
+  const { data: customerQuotes = [], isLoading: quotesLoading } = trpc.quotes.list.useQuery(
+    { customerId },
+    { enabled: customerId > 0 }
+  );
 
   const handleCreateQuote = () => {
     // Create a new quote for this customer and redirect to the quote builder
@@ -46,6 +47,15 @@ export default function CustomerDetail() {
       case "accepted": return `${base} bg-primary/10 text-primary`;
       case "declined": return `${base} bg-destructive/10 text-destructive`;
       default:         return `${base} bg-muted text-muted-foreground`;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "accepted": return "Won";
+      case "declined": return "Lost";
+      case "sent":     return "Sent";
+      default:         return "Draft";
     }
   };
 
@@ -185,7 +195,7 @@ export default function CustomerDetail() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-primary/10 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Accepted</p>
+                  <p className="text-sm text-muted-foreground">Won</p>
                   <p className="text-2xl font-bold mt-1 text-primary">
                     {customerQuotes.filter(q => q.status === "accepted").length}
                   </p>
@@ -233,7 +243,7 @@ export default function CustomerDetail() {
                       <TableCell className="font-medium">{quote.quoteNumber}</TableCell>
                       <TableCell>
                         <span className={getStatusClass(quote.status)}>
-                          {quote.status}
+                          {getStatusLabel(quote.status)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">

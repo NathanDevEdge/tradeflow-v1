@@ -7,7 +7,7 @@ module.exports = {
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 3001,
       },
       // Restart if crashes, don't restart if it exits cleanly
       autorestart: true,

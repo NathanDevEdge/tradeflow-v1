@@ -32,6 +32,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Building2,
+  CheckCheck,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -90,6 +91,9 @@ export default function QuoteDetail() {
   // Invoice tracking
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
+
+  // Confirm-quote flow
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Queries
   const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
@@ -329,16 +333,38 @@ export default function QuoteDetail() {
     utils.quotes.get.invalidate({ id: quoteId });
   };
 
-  const handleEmailQuote = () => {
-    if (!quote?.pdfUrl) {
-      toast.error("Please generate the PDF first before emailing");
-      return;
-    }
+  const handleEmailQuote = async () => {
     if (!customer?.email) {
       toast.error("This customer has no email address on record");
       return;
     }
+    // Auto-generate PDF first if one doesn't exist yet
+    if (!quote?.pdfUrl) {
+      try {
+        await generatePDFMutation.mutateAsync({ id: quoteId });
+      } catch (err: any) {
+        toast.error("Could not generate PDF: " + (err.message ?? "Unknown error"));
+        return;
+      }
+    }
     emailMutation.mutate({ id: quoteId });
+  };
+
+  const handleConfirmQuote = async () => {
+    if (!quote?.items?.length) {
+      toast.error("Add at least one item before confirming");
+      return;
+    }
+    setIsConfirming(true);
+    try {
+      await generatePDFMutation.mutateAsync({ id: quoteId });
+      await updateStatusMutation.mutateAsync({ id: quoteId, status: "sent" });
+      toast.success("Quote confirmed — PDF generated and ready to email");
+    } catch (err: any) {
+      toast.error(err.message ?? "Something went wrong");
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   // Sync editingItems when quote items change
@@ -951,6 +977,32 @@ export default function QuoteDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Confirm / Cancel action bar (draft quotes only) ── */}
+      {quote.status === "draft" && (
+        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-4 px-6 -mx-6 flex items-center justify-end gap-3 mt-6">
+          <span className="text-xs text-muted-foreground mr-auto">
+            {!quote.items?.length
+              ? "Add items to confirm this quote"
+              : "Ready to send? Confirming will generate a PDF and mark this quote as Sent."}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/quotes")}
+            disabled={isConfirming}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmQuote}
+            disabled={isConfirming || !quote.items?.length}
+            className="gap-1.5"
+          >
+            <CheckCheck className="h-4 w-4" />
+            {isConfirming ? "Confirming…" : "Confirm Quote"}
+          </Button>
+        </div>
+      )}
 
       {/* ── Mark Invoiced Modal ── */}
       <Dialog open={invoiceModalOpen} onOpenChange={setInvoiceModalOpen}>

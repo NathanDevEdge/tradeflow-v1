@@ -99,6 +99,10 @@ export default function QuoteDetail() {
   // Preview vs edit mode
   const [isEditing, setIsEditing] = useState(true);
 
+  // PDF URL — capture directly from mutation result so we don't depend on
+  // cache re-fetching before the iframe renders
+  const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
+
   // Queries
   const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
   const { data: customer } = trpc.customers.get.useQuery(
@@ -110,9 +114,12 @@ export default function QuoteDetail() {
   const { data: suppliers } = trpc.suppliers.list.useQuery();
   const utils = trpc.useUtils();
 
-  // Non-draft quotes open in preview mode by default
+  // Non-draft quotes open in preview mode by default; seed localPdfUrl from stored value
   useEffect(() => {
-    if (quote) setIsEditing(quote.status === "draft");
+    if (quote) {
+      setIsEditing(quote.status === "draft");
+      if (quote.pdfUrl) setLocalPdfUrl(quote.pdfUrl);
+    }
   }, [quote?.id]); // run once when quote first loads
 
   // Sync local form state from fetched quote
@@ -371,9 +378,10 @@ export default function QuoteDetail() {
     }
     setIsConfirming(true);
     try {
-      await generatePDFMutation.mutateAsync({ id: quoteId });
+      const { url } = await generatePDFMutation.mutateAsync({ id: quoteId });
+      if (url) setLocalPdfUrl(url);
       await updateStatusMutation.mutateAsync({ id: quoteId, status: "sent" });
-      await utils.quotes.get.invalidate({ id: quoteId });
+      utils.quotes.get.invalidate({ id: quoteId }); // background refresh, don't await
       setIsEditing(false);
       toast.success("Quote confirmed");
     } catch (err: any) {
@@ -386,8 +394,9 @@ export default function QuoteDetail() {
   const handleSaveAndPreview = async () => {
     setIsConfirming(true);
     try {
-      await generatePDFMutation.mutateAsync({ id: quoteId });
-      await utils.quotes.get.invalidate({ id: quoteId });
+      const { url } = await generatePDFMutation.mutateAsync({ id: quoteId });
+      if (url) setLocalPdfUrl(url);
+      utils.quotes.get.invalidate({ id: quoteId }); // background refresh, don't await
       setIsEditing(false);
     } catch (err: any) {
       toast.error(err.message ?? "Something went wrong");
@@ -566,9 +575,9 @@ export default function QuoteDetail() {
         {!isEditing && (
           <Card className="overflow-hidden">
             <CardContent className="p-0">
-              {quote.pdfUrl ? (
+              {localPdfUrl ? (
                 <iframe
-                  src={quote.pdfUrl}
+                  src={localPdfUrl}
                   className="w-full border-0 rounded-lg"
                   style={{ height: "calc(100vh - 160px)", minHeight: 600 }}
                   title={`Quote ${quote.quoteNumber}`}
@@ -576,7 +585,7 @@ export default function QuoteDetail() {
               ) : (
                 <div className="py-16 text-center text-muted-foreground space-y-3">
                   <p className="text-sm">No PDF generated yet.</p>
-                  <Button size="sm" onClick={handleConfirmQuote} disabled={isConfirming}>
+                  <Button size="sm" onClick={handleSaveAndPreview} disabled={isConfirming}>
                     <CheckCheck className="mr-1.5 h-4 w-4" />
                     {isConfirming ? "Generating…" : "Generate Preview"}
                   </Button>

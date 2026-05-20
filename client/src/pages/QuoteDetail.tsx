@@ -33,6 +33,7 @@ import {
   CheckCircle2,
   Building2,
   CheckCheck,
+  Pencil,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -95,6 +96,9 @@ export default function QuoteDetail() {
   // Confirm-quote flow
   const [isConfirming, setIsConfirming] = useState(false);
 
+  // Preview vs edit mode
+  const [isEditing, setIsEditing] = useState(true);
+
   // Queries
   const { data: quote, isLoading } = trpc.quotes.get.useQuery({ id: quoteId });
   const { data: customer } = trpc.customers.get.useQuery(
@@ -105,6 +109,11 @@ export default function QuoteDetail() {
   const { data: pricelists } = trpc.pricelists.list.useQuery();
   const { data: suppliers } = trpc.suppliers.list.useQuery();
   const utils = trpc.useUtils();
+
+  // Non-draft quotes open in preview mode by default
+  useEffect(() => {
+    if (quote) setIsEditing(quote.status === "draft");
+  }, [quote?.id]); // run once when quote first loads
 
   // Sync local form state from fetched quote
   useEffect(() => {
@@ -213,11 +222,15 @@ export default function QuoteDetail() {
   });
 
   const generatePDFMutation = trpc.quotes.generatePDF.useMutation({
-    onSuccess: (data) => {
-      if (data.url) { window.open(data.url, "_blank"); toast.success("PDF generated"); }
-    },
     onError: (err) => toast.error(err.message),
   });
+
+  const handleExportPDF = async () => {
+    try {
+      const data = await generatePDFMutation.mutateAsync({ id: quoteId });
+      if (data?.url) window.open(data.url, "_blank");
+    } catch { /* onError handles toast */ }
+  };
 
   const emailMutation = trpc.quotes.emailToCustomer.useMutation({
     onSuccess: () => {
@@ -342,6 +355,7 @@ export default function QuoteDetail() {
     if (!quote?.pdfUrl) {
       try {
         await generatePDFMutation.mutateAsync({ id: quoteId });
+        await utils.quotes.get.invalidate({ id: quoteId });
       } catch (err: any) {
         toast.error("Could not generate PDF: " + (err.message ?? "Unknown error"));
         return;
@@ -359,7 +373,22 @@ export default function QuoteDetail() {
     try {
       await generatePDFMutation.mutateAsync({ id: quoteId });
       await updateStatusMutation.mutateAsync({ id: quoteId, status: "sent" });
-      toast.success("Quote confirmed — PDF generated and ready to email");
+      await utils.quotes.get.invalidate({ id: quoteId });
+      setIsEditing(false);
+      toast.success("Quote confirmed");
+    } catch (err: any) {
+      toast.error(err.message ?? "Something went wrong");
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const handleSaveAndPreview = async () => {
+    setIsConfirming(true);
+    try {
+      await generatePDFMutation.mutateAsync({ id: quoteId });
+      await utils.quotes.get.invalidate({ id: quoteId });
+      setIsEditing(false);
     } catch (err: any) {
       toast.error(err.message ?? "Something went wrong");
     } finally {
@@ -505,8 +534,16 @@ export default function QuoteDetail() {
               {emailMutation.isPending ? "Sending…" : sentAt ? "Resend Quote" : "Email Quote"}
             </Button>
 
+            {/* Edit Quote (preview mode only, non-draft) */}
+            {quote.status !== "draft" && !isEditing && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit Quote
+              </Button>
+            )}
+
             {/* PDF */}
-            <Button size="sm" onClick={() => generatePDFMutation.mutate({ id: quoteId })} disabled={generatePDFMutation.isPending}>
+            <Button size="sm" onClick={handleExportPDF} disabled={generatePDFMutation.isPending}>
               <FileDown className="mr-1.5 h-4 w-4" />
               {generatePDFMutation.isPending ? "Generating…" : "Export PDF"}
             </Button>
@@ -525,8 +562,32 @@ export default function QuoteDetail() {
           </div>
         </div>
 
-        {/* ── Line Items Card ── */}
-        <Card>
+        {/* ── PDF Preview (non-draft, preview mode) ── */}
+        {!isEditing && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {quote.pdfUrl ? (
+                <iframe
+                  src={quote.pdfUrl}
+                  className="w-full border-0 rounded-lg"
+                  style={{ height: "calc(100vh - 160px)", minHeight: 600 }}
+                  title={`Quote ${quote.quoteNumber}`}
+                />
+              ) : (
+                <div className="py-16 text-center text-muted-foreground space-y-3">
+                  <p className="text-sm">No PDF generated yet.</p>
+                  <Button size="sm" onClick={handleConfirmQuote} disabled={isConfirming}>
+                    <CheckCheck className="mr-1.5 h-4 w-4" />
+                    {isConfirming ? "Generating…" : "Generate Preview"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Line Items Card (edit mode only) ── */}
+        {isEditing && <Card>
           <CardHeader>
             <CardTitle>Line Items</CardTitle>
           </CardHeader>
@@ -731,10 +792,10 @@ export default function QuoteDetail() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
-        {/* ── Notes & Terms Card ── */}
-        <Card>
+        {/* ── Notes & Terms Card (edit mode only) ── */}
+        {isEditing && <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Notes & Terms</CardTitle>
           </CardHeader>
@@ -817,7 +878,7 @@ export default function QuoteDetail() {
               )}
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* ── Invoice Tracking (accepted quotes only) ── */}
         {quote.status === "accepted" && (
@@ -978,13 +1039,14 @@ export default function QuoteDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Confirm / Cancel action bar (draft quotes only) ── */}
+      {/* ── Action bar ── */}
       {quote.status === "draft" && (
+        // Draft: Confirm or go back
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-4 px-6 -mx-6 flex items-center justify-end gap-3 mt-6">
           <span className="text-xs text-muted-foreground mr-auto">
             {!quote.items?.length
               ? "Add items to confirm this quote"
-              : "Ready to send? Confirming will generate a PDF and mark this quote as Sent."}
+              : "Ready to send? Confirming will lock this quote and show you the PDF."}
           </span>
           <Button
             variant="outline"
@@ -1000,6 +1062,29 @@ export default function QuoteDetail() {
           >
             <CheckCheck className="h-4 w-4" />
             {isConfirming ? "Confirming…" : "Confirm Quote"}
+          </Button>
+        </div>
+      )}
+      {quote.status !== "draft" && isEditing && (
+        // Confirmed quote in edit mode: save changes and go back to preview
+        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-4 px-6 -mx-6 flex items-center justify-end gap-3 mt-6">
+          <span className="text-xs text-muted-foreground mr-auto">
+            Changes are saved automatically. Click Save &amp; Preview to update the PDF.
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setIsEditing(false)}
+            disabled={isConfirming}
+          >
+            Discard Changes
+          </Button>
+          <Button
+            onClick={handleSaveAndPreview}
+            disabled={isConfirming}
+            className="gap-1.5"
+          >
+            <CheckCheck className="h-4 w-4" />
+            {isConfirming ? "Saving…" : "Save & Preview"}
           </Button>
         </div>
       )}
